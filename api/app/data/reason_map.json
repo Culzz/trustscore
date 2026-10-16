@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "note": "Shared vocabulary that turns model contributions into plain-language reasons. Consumed by the API at runtime and by the training pipeline when it writes reports. No raw SHAP numbers are ever exposed to applicants.",
+  "numeric": {
+    "person_age": { "label": "Applicant age", "higher_is_riskier": true },
+    "person_income": { "label": "Annual income", "higher_is_riskier": false },
+    "person_emp_length": { "label": "Length of employment", "higher_is_riskier": false },
+    "loan_amnt": { "label": "Requested loan amount", "higher_is_riskier": true },
+    "loan_int_rate": { "label": "Loan interest rate", "higher_is_riskier": true },
+    "loan_percent_income": { "label": "Requested amount relative to income", "higher_is_riskier": true },
+    "cb_person_cred_hist_length": { "label": "Credit history length", "higher_is_riskier": false },
+    "emp_length_missing": { "label": "Employment length not provided", "higher_is_riskier": true, "is_flag": true },
+    "int_rate_missing": { "label": "Interest rate not provided", "higher_is_riskier": true, "is_flag": true }
+  },
+  "categorical": {
+    "person_home_ownership": {
+      "label": "Home ownership",
+      "values": {
+        "RENT": "Renting",
+        "OWN": "Owns home",
+        "MORTGAGE": "Has a mortgage",
+        "OTHER": "Other housing situation"
+      }
+    },
+    "loan_intent": {
+      "label": "Loan purpose",
+      "values": {
+        "DEBTCONSOLIDATION": "Debt consolidation",
+        "EDUCATION": "Education",
+        "HOMEIMPROVEMENT": "Home improvement",
+        "MEDICAL": "Medical expenses",
+        "PERSONAL": "Personal use",
+        "VENTURE": "Business venture"
+      }
+    },
+    "loan_grade": {
+      "label": "Loan grade",
+      "values": {
+        "A": "Grade A",
+        "B": "Grade B",
+        "C": "Grade C",
+        "D": "Grade D",
+        "E": "Grade E",
+        "F": "Grade F",
+        "G": "Grade G"
+      }
+    },
+    "cb_person_default_on_file": {
+      "label": "Prior default on file",
+      "values": {
+        "Y": "A previous default is on file",
+        "N": "No previous default on file"
+      }
+    }
+  }
+}

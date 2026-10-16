@@ -1,0 +1,15 @@
+# Runtime dependencies for the API. Deliberately lean: no scikit-learn, no
+# SciPy, no shap -- the served artifact is NumPy + pandas + LightGBM.
+#
+# NumPy must be >= 2.0: the model artifact is pickled in the training
+# environment (NumPy 2.x) and NumPy 1.x cannot unpickle NumPy 2 arrays.
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.9.2
+pydantic-settings==2.5.2
+numpy>=2.0,<3
+pandas>=2.2,<3
+lightgbm>=4.5,<5
+joblib>=1.4,<2
+psycopg2-binary>=2.9,<3
+slowapi==0.1.9

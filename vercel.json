@@ -1,0 +1,15 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "builds": [
+    { "src": "api/index.py", "use": "@vercel/python@4" },
+    { "src": "web/package.json", "use": "@vercel/next" }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "/api/index.py" },
+    { "src": "/(.*)", "dest": "/web/$1" }
+  ],
+  "env": {
+    "NEXT_PUBLIC_API_BASE_URL": "/api"
+  }
+}

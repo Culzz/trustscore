@@ -1,0 +1,24 @@
+# Render blueprint — the robust, no-bundle-limit way to host the API.
+# Import this repo at https://render.com and Render creates the service.
+#
+# Render's free Postgres expires after 90 days; for a permanent free database
+# use Supabase or Aiven and paste the connection string into DATABASE_URL.
+services:
+  - type: web
+    name: trustscore-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./api/Dockerfile
+    dockerContext: ./api
+    healthCheckPath: /health
+    envVars:
+      - key: STORAGE_BACKEND
+        value: auto
+      - key: LOG_PREDICTIONS
+        value: "true"
+      - key: ENABLE_DOCS
+        value: "true"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: DATABASE_URL
+        sync: false

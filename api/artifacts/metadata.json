@@ -1,0 +1,875 @@
+{
+  "version": "trustscore-1.0.0",
+  "trained_at": "2026-10-16T16:52:11.040228+00:00",
+  "disclaimer": "TrustScore is a demonstration of responsible-AI credit decisioning. It is not a real lending tool, not financial advice, and not a loan offer. Decisions shown are simulated.",
+  "dataset": {
+    "name": "Kaggle Credit Risk Dataset (laotse)",
+    "source": "https://www.kaggle.com/datasets/laotse/credit-risk-dataset",
+    "rows": 32416,
+    "rows_in": 32581,
+    "target_rate": 0.21868830207305034,
+    "split_sizes": {
+      "train": 19449,
+      "validation": 6483,
+      "test": 6484
+    },
+    "features": [
+      "person_age",
+      "person_income",
+      "person_emp_length",
+      "loan_amnt",
+      "loan_int_rate",
+      "loan_percent_income",
+      "cb_person_cred_hist_length",
+      "emp_length_missing",
+      "int_rate_missing",
+      "person_home_ownership",
+      "loan_intent",
+      "loan_grade",
+      "cb_person_default_on_file"
+    ],
+    "seed": 42,
+    "clean_report": {
+      "rows_in": 32581,
+      "rows_out": 32416,
+      "duplicate_rows_removed": 165,
+      "missing_target_removed": 0,
+      "age_out_of_range": 5,
+      "emp_length_out_of_range": 2,
+      "income_non_positive": 0,
+      "loan_amnt_out_of_range": 0,
+      "missing_after": {
+        "person_age": 5,
+        "person_emp_length": 889,
+        "loan_int_rate": 3095
+      }
+    }
+  },
+  "metrics": {
+    "baseline_lr": {
+      "roc_auc": 0.877524852483188,
+      "pr_auc": 0.7293752184396954,
+      "brier": 0.10070447912812519,
+      "threshold": 0.5,
+      "precision": 0.7652671755725191,
+      "recall": 0.5655853314527504,
+      "f1": 0.6504460665044607,
+      "confusion_matrix": {
+        "true_negative": 4820,
+        "false_positive": 246,
+        "false_negative": 616,
+        "true_positive": 802
+      }
+    },
+    "lightgbm": {
+      "roc_auc": 0.9495174277812146,
+      "pr_auc": 0.906394929261129,
+      "brier": 0.052656382233627536,
+      "threshold": 0.5,
+      "precision": 0.9574861367837338,
+      "recall": 0.7306064880112835,
+      "f1": 0.8288,
+      "confusion_matrix": {
+        "true_negative": 5020,
+        "false_positive": 46,
+        "false_negative": 382,
+        "true_positive": 1036
+      }
+    },
+    "calibrated": {
+      "roc_auc": 0.9489743147853134,
+      "pr_auc": 0.8984093385041627,
+      "brier": 0.05274532987212153,
+      "threshold": 0.5,
+      "precision": 0.9575253924284395,
+      "recall": 0.731311706629055,
+      "f1": 0.8292682926829268,
+      "confusion_matrix": {
+        "true_negative": 5020,
+        "false_positive": 46,
+        "false_negative": 381,
+        "true_positive": 1037
+      }
+    }
+  },
+  "calibration": {
+    "brier": 0.05274532987212153,
+    "ece": 0.0052924004231287795,
+    "n_bins": 10,
+    "curve": [
+      {
+        "bin_lower": 0.0,
+        "bin_upper": 0.1,
+        "count": 4044,
+        "mean_predicted": 0.03412946324564998,
+        "observed_rate": 0.03016815034619189
+      },
+      {
+        "bin_lower": 0.1,
+        "bin_upper": 0.2,
+        "count": 960,
+        "mean_predicted": 0.1427635295363249,
+        "observed_rate": 0.13854166666666667
+      },
+      {
+        "bin_lower": 0.2,
+        "bin_upper": 0.30000000000000004,
+        "count": 191,
+        "mean_predicted": 0.22338564414539364,
+        "observed_rate": 0.2670157068062827
+      },
+      {
+        "bin_lower": 0.30000000000000004,
+        "bin_upper": 0.4,
+        "count": 201,
+        "mean_predicted": 0.3586857880897729,
+        "observed_rate": 0.3582089552238806
+      },
+      {
+        "bin_lower": 0.4,
+        "bin_upper": 0.5,
+        "count": 5,
+        "mean_predicted": 0.4,
+        "observed_rate": 0.6
+      },
+      {
+        "bin_lower": 0.5,
+        "bin_upper": 0.6000000000000001,
+        "count": 50,
+        "mean_predicted": 0.5067567567567569,
+        "observed_rate": 0.48
+      },
+      {
+        "bin_lower": 0.6000000000000001,
+        "bin_upper": 0.7000000000000001,
+        "count": 21,
+        "mean_predicted": 0.641141141141141,
+        "observed_rate": 0.6666666666666666
+      },
+      {
+        "bin_lower": 0.7000000000000001,
+        "bin_upper": 0.8,
+        "count": 0,
+        "mean_predicted": null,
+        "observed_rate": null
+      },
+      {
+        "bin_lower": 0.8,
+        "bin_upper": 0.9,
+        "count": 55,
+        "mean_predicted": 0.8509492312185247,
+        "observed_rate": 0.8181818181818182
+      },
+      {
+        "bin_lower": 0.9,
+        "bin_upper": 1.0,
+        "count": 957,
+        "mean_predicted": 0.9980544615027374,
+        "observed_rate": 0.9968652037617555
+      }
+    ]
+  },
+  "thresholds": {
+    "approve_max_pd": 0.05533898305084745,
+    "decline_min_pd": 0.6761864406779661,
+    "analytic_approve_max_pd": 0.05,
+    "analytic_decline_min_pd": 0.75,
+    "cost_matrix": {
+      "false_approve": 1.0,
+      "false_decline": 0.2,
+      "review": 0.05,
+      "units": "cost per unit of loan amount (exposure)"
+    },
+    "expected_cost_per_loan": 0.026598875789061435,
+    "test_realized_cost_per_loan": 0.026352968034700833,
+    "test_expected_cost_per_loan": 0.02723994768855806,
+    "test_approval_rate": 0.4528069093152375,
+    "test_band_counts": {
+      "approve": 2936,
+      "refer": 2536,
+      "decline": 1012
+    }
+  },
+  "fairness": {
+    "model_version": "trustscore-1.0.0",
+    "min_group_size": 30,
+    "definitions": {
+      "positive_prediction": "approved (decision band = approve)",
+      "favourable_outcome": "repaid (loan_status == 0)",
+      "selection_rate": "share of group approved",
+      "tpr": "P(approved | repaid)",
+      "fpr": "P(approved | defaulted)",
+      "precision": "P(repaid | approved)"
+    },
+    "attributes": {
+      "person_home_ownership": {
+        "label": "Home ownership",
+        "groups": [
+          {
+            "n": 2637,
+            "selection_rate": 0.5225635191505499,
+            "tpr": 0.5851433536055604,
+            "fpr": 0.09253731343283582,
+            "precision": 0.9775036284470247,
+            "mean_pd": 0.12863679298201686,
+            "group": "MORTGAGE",
+            "low_sample": false
+          },
+          {
+            "n": 15,
+            "selection_rate": 0.26666666666666666,
+            "tpr": 0.4444444444444444,
+            "fpr": 0.0,
+            "precision": 1.0,
+            "mean_pd": 0.3922226259767869,
+            "group": "OTHER",
+            "low_sample": true
+          },
+          {
+            "n": 493,
+            "selection_rate": 0.8904665314401623,
+            "tpr": 0.9669603524229075,
+            "fpr": 0.0,
+            "precision": 1.0,
+            "mean_pd": 0.07833338412468531,
+            "group": "OWN",
+            "low_sample": false
+          },
+          {
+            "n": 3339,
+            "selection_rate": 0.33393231506439053,
+            "tpr": 0.4780530204259018,
+            "fpr": 0.014450867052023121,
+            "precision": 0.9865470852017937,
+            "mean_pd": 0.31412406333582965,
+            "group": "RENT",
+            "low_sample": false
+          }
+        ],
+        "summary": {
+          "selection_rate_ratio": 0.3750082718149078,
+          "demographic_parity_difference": 0.5565342163757718,
+          "equal_opportunity_difference": 0.48890733199700565,
+          "n_groups_considered": 3
+        }
+      },
+      "age_band": {
+        "label": "Age band",
+        "groups": [
+          {
+            "n": 3077,
+            "selection_rate": 0.4354891127721807,
+            "tpr": 0.5588359342049768,
+            "fpr": 0.021246458923512748,
+            "precision": 0.9888059701492538,
+            "mean_pd": 0.23517230340600734,
+            "group": "18-25",
+            "low_sample": false
+          },
+          {
+            "n": 2721,
+            "selection_rate": 0.4549797868430724,
+            "tpr": 0.5647113594040968,
+            "fpr": 0.04363001745200698,
+            "precision": 0.9798061389337641,
+            "mean_pd": 0.20888893955778554,
+            "group": "26-35",
+            "low_sample": false
+          },
+          {
+            "n": 560,
+            "selection_rate": 0.5160714285714286,
+            "tpr": 0.6345291479820628,
+            "fpr": 0.05263157894736842,
+            "precision": 0.9792387543252595,
+            "mean_pd": 0.20582721377676708,
+            "group": "36-45",
+            "low_sample": false
+          },
+          {
+            "n": 102,
+            "selection_rate": 0.5,
+            "tpr": 0.6538461538461539,
+            "fpr": 0.0,
+            "precision": 1.0,
+            "mean_pd": 0.2218882830519622,
+            "group": "46-55",
+            "low_sample": false
+          },
+          {
+            "n": 18,
+            "selection_rate": 0.7777777777777778,
+            "tpr": 0.8235294117647058,
+            "fpr": 0.0,
+            "precision": 1.0,
+            "mean_pd": 0.0909162113439037,
+            "group": "56-65",
+            "low_sample": true
+          },
+          {
+            "n": 5,
+            "selection_rate": 0.6,
+            "tpr": 0.6,
+            "fpr": null,
+            "precision": 1.0,
+            "mean_pd": 0.2024636853140218,
+            "group": "66+",
+            "low_sample": true
+          },
+          {
+            "n": 1,
+            "selection_rate": 1.0,
+            "tpr": 1.0,
+            "fpr": null,
+            "precision": 1.0,
+            "mean_pd": 0.020531400966183576,
+            "group": "unknown",
+            "low_sample": true
+          }
+        ],
+        "summary": {
+          "selection_rate_ratio": 0.8438543361675473,
+          "demographic_parity_difference": 0.0805823157992479,
+          "equal_opportunity_difference": 0.09501021964117706,
+          "n_groups_considered": 4
+        }
+      },
+      "income_band": {
+        "label": "Income band",
+        "groups": [
+          {
+            "n": 661,
+            "selection_rate": 0.6883509833585476,
+            "tpr": 0.7374581939799331,
+            "fpr": 0.2222222222222222,
+            "precision": 0.9692307692307692,
+            "mean_pd": 0.0893243234258523,
+            "group": "high",
+            "low_sample": false
+          },
+          {
+            "n": 2139,
+            "selection_rate": 0.2613370733987845,
+            "tpr": 0.4088888888888889,
+            "fpr": 0.008871989860583017,
+            "precision": 0.9874776386404294,
+            "mean_pd": 0.36284519586884495,
+            "group": "low",
+            "low_sample": false
+          },
+          {
+            "n": 2142,
+            "selection_rate": 0.44677871148459386,
+            "tpr": 0.540974212034384,
+            "fpr": 0.0327455919395466,
+            "precision": 0.9864158829676071,
+            "mean_pd": 0.1954257649517642,
+            "group": "lower-middle",
+            "low_sample": false
+          },
+          {
+            "n": 1542,
+            "selection_rate": 0.625810635538262,
+            "tpr": 0.6941005098324836,
+            "fpr": 0.07100591715976332,
+            "precision": 0.9875647668393782,
+            "mean_pd": 0.1159571517901483,
+            "group": "upper-middle",
+            "low_sample": false
+          }
+        ],
+        "summary": {
+          "selection_rate_ratio": 0.3796567154210913,
+          "demographic_parity_difference": 0.4270139099597631,
+          "equal_opportunity_difference": 0.32856930509104415,
+          "n_groups_considered": 4
+        }
+      },
+      "loan_intent": {
+        "label": "Loan purpose",
+        "groups": [
+          {
+            "n": 1012,
+            "selection_rate": 0.36561264822134387,
+            "tpr": 0.5041899441340782,
+            "fpr": 0.030405405405405407,
+            "precision": 0.9756756756756757,
+            "mean_pd": 0.2928623401759412,
+            "group": "DEBTCONSOLIDATION",
+            "low_sample": false
+          },
+          {
+            "n": 1314,
+            "selection_rate": 0.4375951293759513,
+            "tpr": 0.5268518518518519,
+            "fpr": 0.02564102564102564,
+            "precision": 0.9895652173913043,
+            "mean_pd": 0.1822879597438506,
+            "group": "EDUCATION",
+            "low_sample": false
+          },
+          {
+            "n": 728,
+            "selection_rate": 0.36675824175824173,
+            "tpr": 0.47985347985347987,
+            "fpr": 0.027472527472527472,
+            "precision": 0.9812734082397003,
+            "mean_pd": 0.2528810465414114,
+            "group": "HOMEIMPROVEMENT",
+            "low_sample": false
+          },
+          {
+            "n": 1234,
+            "selection_rate": 0.3914100486223663,
+            "tpr": 0.518640350877193,
+            "fpr": 0.031055900621118012,
+            "precision": 0.979296066252588,
+            "mean_pd": 0.27539340965987263,
+            "group": "MEDICAL",
+            "low_sample": false
+          },
+          {
+            "n": 1096,
+            "selection_rate": 0.45985401459854014,
+            "tpr": 0.5620689655172414,
+            "fpr": 0.06637168141592921,
+            "precision": 0.9702380952380952,
+            "mean_pd": 0.1969613904025036,
+            "group": "PERSONAL",
+            "low_sample": false
+          },
+          {
+            "n": 1100,
+            "selection_rate": 0.67,
+            "tpr": 0.7813163481953291,
+            "fpr": 0.006329113924050633,
+            "precision": 0.9986431478968792,
+            "mean_pd": 0.14261049789998978,
+            "group": "VENTURE",
+            "low_sample": false
+          }
+        ],
+        "summary": {
+          "selection_rate_ratio": 0.545690519733349,
+          "demographic_parity_difference": 0.30438735177865617,
+          "equal_opportunity_difference": 0.30146286834184927,
+          "n_groups_considered": 6
+        }
+      },
+      "cb_person_default_on_file": {
+        "label": "Prior default on file",
+        "groups": [
+          {
+            "n": 5318,
+            "selection_rate": 0.5212485896953742,
+            "tpr": 0.6293480764800737,
+            "fpr": 0.04094165813715456,
+            "precision": 0.9855699855699855,
+            "mean_pd": 0.18432290778958896,
+            "group": "N",
+            "low_sample": false
+          },
+          {
+            "n": 1166,
+            "selection_rate": 0.14065180102915953,
+            "tpr": 0.21793103448275863,
+            "fpr": 0.013605442176870748,
+            "precision": 0.9634146341463414,
+            "mean_pd": 0.38794849460548964,
+            "group": "Y",
+            "low_sample": false
+          }
+        ],
+        "summary": {
+          "selection_rate_ratio": 0.2698363195790297,
+          "demographic_parity_difference": 0.3805967886662147,
+          "equal_opportunity_difference": 0.4114170419973151,
+          "n_groups_considered": 2
+        }
+      }
+    },
+    "unavailable_attributes": [
+      "gender",
+      "race/ethnicity",
+      "geography/region",
+      "marital status",
+      "disability status"
+    ],
+    "disclaimer": "This dashboard reports statistical disparities between groups. It does not establish legal compliance or non-compliance, and it is not a legal opinion."
+  },
+  "top_features": [
+    {
+      "feature": "loan_percent_income",
+      "mean_abs_contribution": 0.94076873038043
+    },
+    {
+      "feature": "person_income",
+      "mean_abs_contribution": 0.7227710825051112
+    },
+    {
+      "feature": "person_home_ownership_OWN",
+      "mean_abs_contribution": 0.5193895391195756
+    },
+    {
+      "feature": "loan_int_rate",
+      "mean_abs_contribution": 0.5036509406883538
+    },
+    {
+      "feature": "loan_intent_VENTURE",
+      "mean_abs_contribution": 0.3820643489177003
+    },
+    {
+      "feature": "person_home_ownership_RENT",
+      "mean_abs_contribution": 0.3210246355558631
+    },
+    {
+      "feature": "loan_grade_D",
+      "mean_abs_contribution": 0.24998765710104934
+    },
+    {
+      "feature": "loan_grade_A",
+      "mean_abs_contribution": 0.20689052539794933
+    },
+    {
+      "feature": "loan_intent_HOMEIMPROVEMENT",
+      "mean_abs_contribution": 0.16037407045344063
+    },
+    {
+      "feature": "person_emp_length",
+      "mean_abs_contribution": 0.14683317828223352
+    },
+    {
+      "feature": "loan_amnt",
+      "mean_abs_contribution": 0.13904994578647978
+    },
+    {
+      "feature": "loan_grade_B",
+      "mean_abs_contribution": 0.1329697749425032
+    }
+  ],
+  "score_distribution": {
+    "bins": [
+      {
+        "pd": 0.0125,
+        "count": 1997,
+        "mean_exposure": 9261.529794692038
+      },
+      {
+        "pd": 0.037500000000000006,
+        "count": 939,
+        "mean_exposure": 9644.169329073482
+      },
+      {
+        "pd": 0.0625,
+        "count": 637,
+        "mean_exposure": 8946.07535321821
+      },
+      {
+        "pd": 0.08750000000000001,
+        "count": 471,
+        "mean_exposure": 8764.384288747346
+      },
+      {
+        "pd": 0.1125,
+        "count": 591,
+        "mean_exposure": 9009.729272419629
+      },
+      {
+        "pd": 0.1375,
+        "count": 56,
+        "mean_exposure": 10034.375
+      },
+      {
+        "pd": 0.1875,
+        "count": 313,
+        "mean_exposure": 8989.536741214057
+      },
+      {
+        "pd": 0.21250000000000002,
+        "count": 110,
+        "mean_exposure": 9549.772727272728
+      },
+      {
+        "pd": 0.2375,
+        "count": 48,
+        "mean_exposure": 10733.333333333334
+      },
+      {
+        "pd": 0.2625,
+        "count": 33,
+        "mean_exposure": 8606.060606060606
+      },
+      {
+        "pd": 0.3125,
+        "count": 8,
+        "mean_exposure": 8800.0
+      },
+      {
+        "pd": 0.3375,
+        "count": 110,
+        "mean_exposure": 9532.5
+      },
+      {
+        "pd": 0.3875,
+        "count": 83,
+        "mean_exposure": 9984.939759036144
+      },
+      {
+        "pd": 0.41250000000000003,
+        "count": 5,
+        "mean_exposure": 9160.0
+      },
+      {
+        "pd": 0.5125,
+        "count": 50,
+        "mean_exposure": 11070.5
+      },
+      {
+        "pd": 0.6375,
+        "count": 17,
+        "mean_exposure": 8955.882352941177
+      },
+      {
+        "pd": 0.6625000000000001,
+        "count": 4,
+        "mean_exposure": 12375.0
+      },
+      {
+        "pd": 0.8125,
+        "count": 17,
+        "mean_exposure": 10919.117647058823
+      },
+      {
+        "pd": 0.8375000000000001,
+        "count": 18,
+        "mean_exposure": 11069.444444444445
+      },
+      {
+        "pd": 0.8875,
+        "count": 20,
+        "mean_exposure": 8770.0
+      },
+      {
+        "pd": 0.9625000000000001,
+        "count": 30,
+        "mean_exposure": 10989.166666666666
+      },
+      {
+        "pd": 0.9875,
+        "count": 927,
+        "mean_exposure": 11707.22761596548
+      }
+    ],
+    "n": 6484,
+    "mean_pd": 0.2209403405822078
+  },
+  "policy_simulation": {
+    "bins": [
+      {
+        "pd": 0.0125,
+        "count": 1997,
+        "mean_exposure": 9261.529794692038
+      },
+      {
+        "pd": 0.037500000000000006,
+        "count": 939,
+        "mean_exposure": 9644.169329073482
+      },
+      {
+        "pd": 0.0625,
+        "count": 637,
+        "mean_exposure": 8946.07535321821
+      },
+      {
+        "pd": 0.08750000000000001,
+        "count": 471,
+        "mean_exposure": 8764.384288747346
+      },
+      {
+        "pd": 0.1125,
+        "count": 591,
+        "mean_exposure": 9009.729272419629
+      },
+      {
+        "pd": 0.1375,
+        "count": 56,
+        "mean_exposure": 10034.375
+      },
+      {
+        "pd": 0.1875,
+        "count": 313,
+        "mean_exposure": 8989.536741214057
+      },
+      {
+        "pd": 0.21250000000000002,
+        "count": 110,
+        "mean_exposure": 9549.772727272728
+      },
+      {
+        "pd": 0.2375,
+        "count": 48,
+        "mean_exposure": 10733.333333333334
+      },
+      {
+        "pd": 0.2625,
+        "count": 33,
+        "mean_exposure": 8606.060606060606
+      },
+      {
+        "pd": 0.3125,
+        "count": 8,
+        "mean_exposure": 8800.0
+      },
+      {
+        "pd": 0.3375,
+        "count": 110,
+        "mean_exposure": 9532.5
+      },
+      {
+        "pd": 0.3875,
+        "count": 83,
+        "mean_exposure": 9984.939759036144
+      },
+      {
+        "pd": 0.41250000000000003,
+        "count": 5,
+        "mean_exposure": 9160.0
+      },
+      {
+        "pd": 0.5125,
+        "count": 50,
+        "mean_exposure": 11070.5
+      },
+      {
+        "pd": 0.6375,
+        "count": 17,
+        "mean_exposure": 8955.882352941177
+      },
+      {
+        "pd": 0.6625000000000001,
+        "count": 4,
+        "mean_exposure": 12375.0
+      },
+      {
+        "pd": 0.8125,
+        "count": 17,
+        "mean_exposure": 10919.117647058823
+      },
+      {
+        "pd": 0.8375000000000001,
+        "count": 18,
+        "mean_exposure": 11069.444444444445
+      },
+      {
+        "pd": 0.8875,
+        "count": 20,
+        "mean_exposure": 8770.0
+      },
+      {
+        "pd": 0.9625000000000001,
+        "count": 30,
+        "mean_exposure": 10989.166666666666
+      },
+      {
+        "pd": 0.9875,
+        "count": 927,
+        "mean_exposure": 11707.22761596548
+      }
+    ],
+    "n": 6484
+  },
+  "metric_definitions": {
+    "roc_auc": "Ranking quality (0.5 = random, 1.0 = perfect).",
+    "pr_auc": "Average precision; more informative than ROC-AUC when defaults are rare.",
+    "brier": "Mean squared error of the predicted probabilities; lower is better.",
+    "ece": "Expected calibration error across 10 probability bins; lower is better.",
+    "selection_rate": "Share of a group that is approved.",
+    "tpr": "P(approved | repaid) \u2014 approval rate among the creditworthy.",
+    "fpr": "P(approved | defaulted)."
+  },
+  "limitations": [
+    "Trained on the public Kaggle Credit Risk Dataset, which is not Nigerian credit data. It demonstrates the system, not a production score for any real market.",
+    "Fairness is audited only for attributes present in the data (home ownership, age band, income band, loan purpose, prior default flag). Gender, race/ethnicity, geography and other attributes are not in the dataset and are reported as 'not available'.",
+    "Fairness figures are statistical disparities between groups. They do not prove legal compliance or non-compliance.",
+    "Counterfactuals are model-generated scenarios, not guaranteed approval conditions.",
+    "Performance monitoring is offline/simulated: the public dataset has no live outcome stream.",
+    "Deployment targets a serverless environment, so the production model is kept deliberately light (LightGBM only; no SHAP library at runtime).",
+    "The measured ROC-AUC is optimistic for a real credit setting: the dataset's loan grade and interest rate are lender-assigned fields that already encode an underwriting judgement, so part of the model's skill is reproducing the lender's own risk tiering rather than independent prediction."
+  ],
+  "drift": {
+    "model_version": "trustscore-1.0.0",
+    "method": "Population Stability Index (decile bins for numerics)",
+    "note": "Offline/simulated: the public dataset has no live outcome stream, so this compares the training split (reference) with the held-out test split (current).",
+    "thresholds": {
+      "stable_below": 0.1,
+      "moderate_below": 0.25
+    },
+    "features": {
+      "person_age": {
+        "type": "numeric",
+        "psi": 0.0016195594894035342,
+        "verdict": "stable"
+      },
+      "person_income": {
+        "type": "numeric",
+        "psi": 0.0014723872690977017,
+        "verdict": "stable"
+      },
+      "person_emp_length": {
+        "type": "numeric",
+        "psi": 0.001727611295533251,
+        "verdict": "stable"
+      },
+      "loan_amnt": {
+        "type": "numeric",
+        "psi": 0.00204337981645934,
+        "verdict": "stable"
+      },
+      "loan_int_rate": {
+        "type": "numeric",
+        "psi": 0.0011320418159393817,
+        "verdict": "stable"
+      },
+      "loan_percent_income": {
+        "type": "numeric",
+        "psi": 0.002997890104942571,
+        "verdict": "stable"
+      },
+      "cb_person_cred_hist_length": {
+        "type": "numeric",
+        "psi": 0.00045994352542701444,
+        "verdict": "stable"
+      },
+      "emp_length_missing": {
+        "type": "numeric",
+        "psi": 0.0,
+        "verdict": "stable"
+      },
+      "int_rate_missing": {
+        "type": "numeric",
+        "psi": 0.0,
+        "verdict": "stable"
+      },
+      "person_home_ownership": {
+        "type": "categorical",
+        "psi": 0.0010245181849386862,
+        "verdict": "stable"
+      },
+      "loan_intent": {
+        "type": "categorical",
+        "psi": 0.0008497010628357493,
+        "verdict": "stable"
+      },
+      "loan_grade": {
+        "type": "categorical",
+        "psi": 0.00028732656147020856,
+        "verdict": "stable"
+      },
+      "cb_person_default_on_file": {
+        "type": "categorical",
+        "psi": 5.547826614244095e-05,
+        "verdict": "stable"
+      }
+    }
+  }
+}

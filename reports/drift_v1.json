@@ -1,0 +1,76 @@
+{
+  "model_version": "trustscore-1.0.0",
+  "method": "Population Stability Index (decile bins for numerics)",
+  "note": "Offline/simulated: the public dataset has no live outcome stream, so this compares the training split (reference) with the held-out test split (current).",
+  "thresholds": {
+    "stable_below": 0.1,
+    "moderate_below": 0.25
+  },
+  "features": {
+    "person_age": {
+      "type": "numeric",
+      "psi": 0.0016195594894035342,
+      "verdict": "stable"
+    },
+    "person_income": {
+      "type": "numeric",
+      "psi": 0.0014723872690977017,
+      "verdict": "stable"
+    },
+    "person_emp_length": {
+      "type": "numeric",
+      "psi": 0.001727611295533251,
+      "verdict": "stable"
+    },
+    "loan_amnt": {
+      "type": "numeric",
+      "psi": 0.00204337981645934,
+      "verdict": "stable"
+    },
+    "loan_int_rate": {
+      "type": "numeric",
+      "psi": 0.0011320418159393817,
+      "verdict": "stable"
+    },
+    "loan_percent_income": {
+      "type": "numeric",
+      "psi": 0.002997890104942571,
+      "verdict": "stable"
+    },
+    "cb_person_cred_hist_length": {
+      "type": "numeric",
+      "psi": 0.00045994352542701444,
+      "verdict": "stable"
+    },
+    "emp_length_missing": {
+      "type": "numeric",
+      "psi": 0.0,
+      "verdict": "stable"
+    },
+    "int_rate_missing": {
+      "type": "numeric",
+      "psi": 0.0,
+      "verdict": "stable"
+    },
+    "person_home_ownership": {
+      "type": "categorical",
+      "psi": 0.0010245181849386862,
+      "verdict": "stable"
+    },
+    "loan_intent": {
+      "type": "categorical",
+      "psi": 0.0008497010628357493,
+      "verdict": "stable"
+    },
+    "loan_grade": {
+      "type": "categorical",
+      "psi": 0.00028732656147020856,
+      "verdict": "stable"
+    },
+    "cb_person_default_on_file": {
+      "type": "categorical",
+      "psi": 5.547826614244095e-05,
+      "verdict": "stable"
+    }
+  }
+}

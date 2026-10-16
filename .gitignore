@@ -1,0 +1,50 @@
+# ---- data (never commit raw or derived data) ----
+data/*
+!data/README.md
+*.csv
+*.csv.zip
+*.7z
+
+# ---- python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+mlruns/
+mlartifacts/
+
+# ---- node ----
+node_modules/
+.next/
+out/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ---- env / secrets ----
+.env
+.env.*
+!.env.example
+*.pem
+vercel.env*
+
+# ---- local state ----
+*.db
+*.sqlite
+*.sqlite3
+
+# ---- os / editor ----
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+
+# ---- reports that are regenerated (keep the committed contract copies) ----
+# reports/*.html

@@ -1,0 +1,47 @@
+{
+  "baseline_lr": {
+    "roc_auc": 0.877524852483188,
+    "pr_auc": 0.7293752184396954,
+    "brier": 0.10070447912812519,
+    "threshold": 0.5,
+    "precision": 0.7652671755725191,
+    "recall": 0.5655853314527504,
+    "f1": 0.6504460665044607,
+    "confusion_matrix": {
+      "true_negative": 4820,
+      "false_positive": 246,
+      "false_negative": 616,
+      "true_positive": 802
+    }
+  },
+  "lightgbm": {
+    "roc_auc": 0.9495174277812146,
+    "pr_auc": 0.906394929261129,
+    "brier": 0.052656382233627536,
+    "threshold": 0.5,
+    "precision": 0.9574861367837338,
+    "recall": 0.7306064880112835,
+    "f1": 0.8288,
+    "confusion_matrix": {
+      "true_negative": 5020,
+      "false_positive": 46,
+      "false_negative": 382,
+      "true_positive": 1036
+    }
+  },
+  "calibrated": {
+    "roc_auc": 0.9489743147853134,
+    "pr_auc": 0.8984093385041627,
+    "brier": 0.05274532987212153,
+    "threshold": 0.5,
+    "precision": 0.9575253924284395,
+    "recall": 0.731311706629055,
+    "f1": 0.8292682926829268,
+    "confusion_matrix": {
+      "true_negative": 5020,
+      "false_positive": 46,
+      "false_negative": 381,
+      "true_positive": 1037
+    }
+  }
+}
