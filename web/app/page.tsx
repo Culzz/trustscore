@@ -1,17 +1,26 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Loader2, RefreshCw, Wand2 } from "lucide-react";
-import { api, ApiError } from "@/lib/api";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  AlertTriangle,
+  ChevronDown,
+  Info,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
+import { api, ApiError, watchJob } from "@/lib/api";
 import { DEFAULT_APPLICANT, SAMPLES, type SampleApplicant } from "@/lib/samples";
 import type {
   Applicant,
-  CounterfactualResponse,
-  DecisionResponse,
-  ExplainResponse,
-  PredictResponse,
+  ApplicationResult,
+  JobEvent,
+  MacroContext,
+  RegistryModel,
 } from "@/lib/types";
-import { BAND_LABEL_TEXT, cn, formatMoney, formatPct } from "@/lib/utils";
+import { cn, formatPct } from "@/lib/utils";
+import { useMode } from "@/components/mode-provider";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,91 +30,125 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input, Label, Select } from "@/components/ui/field";
-import { BandBadge } from "@/components/ui/badge";
-import { RiskGauge } from "@/components/risk-gauge";
+import { RiskDisclosure } from "@/components/risk-disclosure";
+import { ProgressSteps } from "@/components/progress-steps";
+import { BlueprintCard } from "@/components/blueprint-card";
+import { NoticeCard } from "@/components/notice-card";
 import { ReasonList } from "@/components/reason-list";
-
-interface Results {
-  predict: PredictResponse;
-  explain: ExplainResponse;
-  decision: DecisionResponse;
-  counterfactual: CounterfactualResponse;
-}
+import { WhatIfSandbox } from "@/components/whatif-sandbox";
 
 export default function ApplicantPage() {
+  const { setMode } = useMode();
   const [applicant, setApplicant] = useState<Applicant>(DEFAULT_APPLICANT);
-  const [results, setResults] = useState<Results | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [events, setEvents] = useState<JobEvent[]>([]);
+  const [result, setResult] = useState<ApplicationResult | null>(null);
+  const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [transport, setTransport] = useState<"websocket" | "polling" | null>(null);
 
-  // What-if: a lightweight live re-score when the requested amount changes.
-  const [whatIfAmount, setWhatIfAmount] = useState<number>(DEFAULT_APPLICANT.loan_amnt);
-  const [whatIfBand, setWhatIfBand] = useState<PredictResponse | null>(null);
+  // Policy controls.
+  const [model, setModel] = useState<string>("");
+  const [models, setModels] = useState<RegistryModel[]>([]);
+  const [applyFairness, setApplyFairness] = useState(false);
+  const [region, setRegion] = useState("national");
+  const [regions, setRegions] = useState<{ id: string; label: string }[]>([]);
+  const [context, setContext] = useState<MacroContext | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const stopRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => {
+    setMode("applicant");
+  }, [setMode]);
+
+  useEffect(() => {
+    api
+      .models()
+      .then((data) => setModels(data.models))
+      .catch(() => setModels([]));
+  }, []);
+
+  useEffect(() => {
+    api
+      .context(region)
+      .then((data) => {
+        setRegions(data.regions);
+        setContext(data.context);
+      })
+      .catch(() => undefined);
+  }, [region]);
+
+  useEffect(() => () => stopRef.current?.(), []);
 
   const set = <K extends keyof Applicant>(key: K, value: Applicant[K]) =>
     setApplicant((a) => ({ ...a, [key]: value }));
 
   const loadSample = (sample: SampleApplicant) => {
+    stopRef.current?.();
     setApplicant(sample.applicant);
-    setWhatIfAmount(sample.applicant.loan_amnt);
-    setResults(null);
-    setWhatIfBand(null);
+    setResult(null);
+    setEvents([]);
     setError(null);
+    setRunning(false);
   };
 
   const submit = useCallback(async () => {
-    setLoading(true);
+    stopRef.current?.();
+    setRunning(true);
     setError(null);
+    setResult(null);
+    setEvents([]);
     try {
-      const [predict, explain, decision, counterfactual] = await Promise.all([
-        api.predict(applicant),
-        api.explain(applicant),
-        api.decision(applicant),
-        api.counterfactual(applicant),
-      ]);
-      setResults({ predict, explain, decision, counterfactual });
-      setWhatIfAmount(applicant.loan_amnt);
+      const job = await api.submitApplication(applicant, {
+        model: model || null,
+        apply_fairness: applyFairness,
+        region,
+        use_macro_tilt: false,
+      });
+      stopRef.current = watchJob(job.job_id, {
+        onEvent: (event) =>
+          setEvents((prev) => {
+            if (prev.some((e) => e.step === event.step && e.at === event.at)) {
+              return prev;
+            }
+            return [...prev, event];
+          }),
+        onTransport: setTransport,
+        onDone: (finished) => {
+          setRunning(false);
+          if (finished?.result) setResult(finished.result);
+        },
+        onError: (message) => {
+          setRunning(false);
+          setError(message);
+        },
+      });
     } catch (err) {
+      setRunning(false);
       setError(err instanceof ApiError ? err.message : "Unexpected error.");
-      setResults(null);
-    } finally {
-      setLoading(false);
     }
-  }, [applicant]);
+  }, [applicant, model, applyFairness, region]);
 
-  // Debounced what-if scoring.
-  useEffect(() => {
-    if (!results) return;
-    if (whatIfAmount === applicant.loan_amnt) {
-      setWhatIfBand(null);
-      return;
-    }
-    const handle = setTimeout(() => {
-      api
-        .predict({ ...applicant, loan_amnt: whatIfAmount })
-        .then(setWhatIfBand)
-        .catch(() => setWhatIfBand(null));
-    }, 350);
-    return () => clearTimeout(handle);
-  }, [whatIfAmount, applicant, results]);
-
-  const active = whatIfBand ?? results?.predict ?? null;
-  const topReasons = results?.explain.reasons ?? [];
-  const scenarios = results?.counterfactual.scenarios ?? [];
+  const fairnessNote = result?.scoring.mitigation.applied
+    ? `Fairness mitigation moved this decision from ${result.scoring.band} to ${result.scoring.final_band} for the ${result.scoring.mitigation.attribute} group.`
+    : result?.scoring.mitigation.requested && result?.scoring.mitigation.method === "none"
+      ? "Fairness mitigation was requested but no mitigation parameters are available."
+      : result?.scoring.mitigation.requested
+        ? "Fairness mitigation was applied; the band is unchanged for this applicant."
+        : null;
 
   return (
     <div className="space-y-6">
       <header className="space-y-1">
         <h1 className="text-2xl font-semibold text-slate-900">Applicant view</h1>
         <p className="text-sm text-slate-600">
-          Enter an application, or start from an example, and see an estimated
-          risk, plain-language reasons, a simulated decision and feasible
-          alternatives.
+          Enter an application, or start from an example. You get an estimated risk
+          category, the reasons behind it in plain language, a simulated decision,
+          and a concrete plan for improving it.
         </p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* ---------------------------------------------------------- form */}
         <Card>
           <CardHeader>
             <CardTitle>Application details</CardTitle>
@@ -147,7 +190,9 @@ export default function ApplicantPage() {
               <SelectField
                 label="Home ownership"
                 value={applicant.person_home_ownership}
-                onChange={(v) => set("person_home_ownership", v as Applicant["person_home_ownership"])}
+                onChange={(v) =>
+                  set("person_home_ownership", v as Applicant["person_home_ownership"])
+                }
                 options={["RENT", "OWN", "MORTGAGE", "OTHER"]}
               />
               <NumberField
@@ -202,7 +247,10 @@ export default function ApplicantPage() {
                 label="Prior default on file"
                 value={applicant.cb_person_default_on_file}
                 onChange={(v) =>
-                  set("cb_person_default_on_file", v as Applicant["cb_person_default_on_file"])
+                  set(
+                    "cb_person_default_on_file",
+                    v as Applicant["cb_person_default_on_file"],
+                  )
                 }
                 options={["N", "Y"]}
                 renderOption={(v) => (v === "Y" ? "Yes" : "No")}
@@ -216,9 +264,49 @@ export default function ApplicantPage() {
               />
             </div>
 
-            <Button onClick={submit} disabled={loading} className="w-full">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
-              {loading ? "Scoring…" : "Get estimated risk"}
+            <div className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-3">
+              <div>
+                <Label>Model version</Label>
+                <Select value={model} onChange={(e) => setModel(e.target.value)}>
+                  <option value="">Default (Alpha)</option>
+                  {models.map((m) => (
+                    <option key={m.version} value={m.version}>
+                      {m.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <Label>Macro region (context)</Label>
+                <Select value={region} onChange={(e) => setRegion(e.target.value)}>
+                  {(regions.length > 0
+                    ? regions
+                    : [{ id: "national", label: "National" }]
+                  ).map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <label className="flex items-end gap-2 pb-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={applyFairness}
+                  onChange={(e) => setApplyFairness(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-brand-600"
+                />
+                Apply fairness mitigation (Beta)
+              </label>
+            </div>
+
+            <Button onClick={submit} disabled={running} className="w-full">
+              {running ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Wand2 className="h-4 w-4" />
+              )}
+              {running ? "Working through the application…" : "Get my estimated risk"}
             </Button>
 
             {error ? (
@@ -230,152 +318,170 @@ export default function ApplicantPage() {
           </CardContent>
         </Card>
 
-        {/* ------------------------------------------------------- results */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Result</CardTitle>
-            <CardDescription>
-              Estimated risk and a simulated decision — not an offer.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {!active ? (
-              <div className="flex h-64 flex-col items-center justify-center text-center text-sm text-slate-500">
-                <RefreshCw className="mb-3 h-6 w-6 text-slate-300" />
-                Score an application to see the result here.
-              </div>
-            ) : (
-              <>
-                <div className="flex items-center justify-between gap-4">
-                  <RiskGauge
-                    probability={active.probability_of_default}
-                    band={active.band}
-                    label={BAND_LABEL_TEXT[active.band_label]}
-                  />
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-slate-500">
-                        Simulated decision
-                      </p>
-                      <div className="mt-1 flex items-center gap-2">
-                        <BandBadge
-                          band={active.band}
-                          label={
-                            results ? results.decision.decision.toUpperCase() : active.band.toUpperCase()
-                          }
-                        />
-                        <span className="text-xs text-slate-500">labelled simulated</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-500">
-                      Approve ≤ {formatPct(active.thresholds.approve_max_pd, 0)} · Decline ≥{" "}
-                      {formatPct(active.thresholds.decline_min_pd, 0)}
-                    </p>
-                    <p className="text-[11px] text-slate-400">
-                      Model {active.model_version}
-                    </p>
-                  </div>
-                </div>
-
-                {whatIfBand ? (
-                  <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
-                    What-if: at {formatMoney(whatIfAmount)} the estimated risk becomes{" "}
-                    {formatPct(whatIfBand.probability_of_default)} ({BAND_LABEL_TEXT[whatIfBand.band_label]}).
-                  </p>
-                ) : null}
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* ------------------------------------------------------- reasons + CF */}
-      {results ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Why this estimate</CardTitle>
-              <CardDescription>Key factors, in plain language.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ReasonList reasons={topReasons} />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>What could change</CardTitle>
+              <CardTitle>Your estimate</CardTitle>
               <CardDescription>
-                Feasible changes only. Protected attributes are never suggested.
+                The category first; the numbers only if you want them.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {scenarios.length === 0 ? (
-                <p className="text-sm text-slate-500">
-                  This applicant is already in the best band — nothing to suggest.
-                </p>
-              ) : (
-                <ul className="space-y-2">
-                  {scenarios.map((s, i) => (
-                    <li
-                      key={i}
-                      className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
-                    >
-                      <p className="text-sm text-slate-800">{s.description}</p>
-                      <p className="mt-1 text-[11px] text-slate-500">
-                        New estimated risk {formatPct(s.new_pd)} ·{" "}
-                        <span className="capitalize">{s.changeability.replaceAll("_", " ")}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <p className="text-[11px] text-slate-400">
-                Counterfactuals are model-generated scenarios, not guaranteed
-                approval conditions.
-              </p>
+              {!result && !running ? (
+                <div className="flex h-48 flex-col items-center justify-center text-center text-sm text-slate-500">
+                  <RefreshCw className="mb-3 h-6 w-6 text-slate-300" />
+                  Submit an application to see the estimate here.
+                </div>
+              ) : null}
+
+              {running ? (
+                <ProgressSteps events={events} running={running} />
+              ) : null}
+
+              {result ? (
+                <>
+                  <RiskDisclosure
+                    band={result.scoring.final_band}
+                    probability={result.scoring.probability_of_default}
+                    thresholds={result.scoring.thresholds}
+                    modelVersion={result.scoring.model_version}
+                    group={result.scoring.group}
+                  />
+
+                  {fairnessNote ? (
+                    <p className="flex items-start gap-1.5 rounded-lg border border-brand-100 bg-brand-50 px-3 py-2 text-[11px] text-brand-900">
+                      <Sparkles className="mt-0.5 h-3 w-3 shrink-0" />
+                      {fairnessNote}
+                    </p>
+                  ) : null}
+
+                  {transport ? (
+                    <p className="text-[10px] text-slate-400">
+                      Milestones streamed over {transport === "websocket" ? "WebSocket" : "polling"}.
+                    </p>
+                  ) : null}
+
+                  {context ? <ContextStrip context={context} /> : null}
+                </>
+              ) : null}
             </CardContent>
           </Card>
 
-          {/* ------------------------------------------------ what-if slider */}
-          <Card className="lg:col-span-2">
+          {result ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>How to get approved</CardTitle>
+                <CardDescription>
+                  Concrete, independent routes to a better category — dual-target
+                  where two paths exist.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BlueprintCard blueprint={result.blueprint} />
+              </CardContent>
+            </Card>
+          ) : null}
+        </div>
+      </div>
+
+      {result ? (
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
             <CardHeader>
-              <CardTitle>What-if: adjust the requested amount</CardTitle>
+              <CardTitle>Your notice</CardTitle>
               <CardDescription>
-                Move the amount and watch the estimated risk update live.
+                ECOA-style reason codes with a language guardrail applied.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-4">
-                <input
-                  type="range"
-                  min={500}
-                  max={40000}
-                  step={500}
-                  value={whatIfAmount}
-                  onChange={(e) => setWhatIfAmount(Number(e.target.value))}
-                  className="h-2 w-full cursor-pointer appearance-none rounded-full bg-slate-200 accent-brand-600"
-                />
-                <span className="w-24 shrink-0 text-right text-sm font-medium tabular-nums text-slate-800">
-                  {formatMoney(whatIfAmount)}
-                </span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span>Current estimate</span>
-                <span className="font-medium text-slate-700">
-                  {formatPct(
-                    (whatIfBand ?? results.predict).probability_of_default,
-                  )}
-                </span>
-                <span>·</span>
-                <span className="capitalize">
-                  {BAND_LABEL_TEXT[(whatIfBand ?? results.predict).band_label]}
-                </span>
-              </div>
+            <CardContent>
+              <NoticeCard narrative={result.narrative} />
             </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>What-if sandbox</CardTitle>
+              <CardDescription>
+                Change the amount or purpose on the right and compare against what
+                you submitted.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <WhatIfSandbox
+                base={applicant}
+                options={{
+                  model: model || null,
+                  applyFairness,
+                  mitigationAttribute: result.scoring.mitigation.attribute,
+                }}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle>Why this estimate (technical detail)</CardTitle>
+                <CardDescription>
+                  The model contributions behind the notice, for transparency.
+                </CardDescription>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDetailOpen((v) => !v)}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                aria-expanded={detailOpen}
+              >
+                {detailOpen ? "Hide" : "Show"}
+                <ChevronDown
+                  className={cn("h-3.5 w-3.5 transition", detailOpen && "rotate-180")}
+                />
+              </button>
+            </CardHeader>
+            {detailOpen ? (
+              <CardContent>
+                <ReasonList reasons={result.reasons} />
+                <p className="mt-3 flex items-start gap-1.5 text-[11px] text-slate-400">
+                  <Info className="mt-0.5 h-3 w-3 shrink-0" />
+                  Contributions describe how the model reached its estimate. They are
+                  not the same as adverse-action reason codes, which is why the
+                  notice above uses its own reviewed wording.
+                </p>
+              </CardContent>
+            ) : null}
           </Card>
         </div>
       ) : null}
+    </div>
+  );
+}
+
+function ContextStrip({ context }: { context: MacroContext }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-[11px] sm:grid-cols-4">
+      <div>
+        <p className="text-slate-500">Prime rate</p>
+        <p className="mono font-semibold text-slate-800">{context.prime_rate}%</p>
+      </div>
+      <div>
+        <p className="text-slate-500">Unemployment</p>
+        <p className="mono font-semibold text-slate-800">
+          {context.unemployment_rate}%
+        </p>
+      </div>
+      <div>
+        <p className="text-slate-500">CPI (YoY)</p>
+        <p className="mono font-semibold text-slate-800">{context.cpi_yoy}%</p>
+      </div>
+      <div>
+        <p className="text-slate-500">Cycle tilt</p>
+        <p className="mono font-semibold text-slate-800">
+          {formatPct(context.cycle_tilt, 0)}
+        </p>
+      </div>
+      <p className="col-span-2 text-[10px] text-slate-400 sm:col-span-4">
+        {context.region_label} · {context.note}
+      </p>
     </div>
   );
 }

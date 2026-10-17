@@ -25,9 +25,21 @@ API_ARTIFACTS_DIR = REPO_ROOT / "api" / "artifacts"
 MODEL_ARTIFACT = API_ARTIFACTS_DIR / "model.joblib"
 METADATA_JSON = API_ARTIFACTS_DIR / "metadata.json"
 
+# The fairness-tuned ("Beta") model. It shares the booster with the baseline
+# ("Alpha") and layers an equalized-odds post-processor on top.
+MODEL_FAIR_ARTIFACT = API_ARTIFACTS_DIR / "model_fair.joblib"
+METADATA_FAIR_JSON = API_ARTIFACTS_DIR / "metadata_fair.json"
+
+# Model registry + the compact portfolio slice used for live policy simulation
+# and A/B comparison (public dataset rows, down-sampled and quantised).
+REGISTRY_JSON = API_ARTIFACTS_DIR / "registry.json"
+REFERENCE_DIST_JSON = API_ARTIFACTS_DIR / "reference.json"
+PORTFOLIO_JSON = API_ARTIFACTS_DIR / "portfolio.json"
+
 # Human-readable reports (committed).
 REPORTS_DIR = REPO_ROOT / "reports"
 FAIRNESS_JSON = REPORTS_DIR / "fairness_v1.json"
+FAIRNESS_FAIR_JSON = REPORTS_DIR / "fairness_v110.json"
 DRIFT_JSON = REPORTS_DIR / "drift_v1.json"
 METRICS_JSON = REPORTS_DIR / "metrics_v1.json"
 MODEL_CARD_MD = REPORTS_DIR / "MODEL_CARD.md"
@@ -39,6 +51,7 @@ CALIBRATION_JSON = REPORTS_DIR / "calibration_v1.json"
 # ---------------------------------------------------------------------------
 SEED = 42
 MODEL_VERSION = "trustscore-1.0.0"
+FAIR_MODEL_VERSION = "trustscore-1.1.0"
 
 # ---------------------------------------------------------------------------
 # Target + raw schema
@@ -48,10 +61,13 @@ TARGET = "loan_status"  # 1 = default, 0 = repaid
 # The feature schema lives in the shared runtime module (app.core.features) and
 # is imported here so training and serving can never disagree about it.
 from app.core.features import (  # noqa: E402  (import after path setup)
+    AGE_BANDS,
     CATEGORICAL_FEATURES,
     DERIVED_FEATURES,
+    MITIGATION_ATTRIBUTE,
     NUMERIC_FEATURES,
     RAW_INPUT_COLUMNS,
+    age_band,
 )
 
 # ---------------------------------------------------------------------------
@@ -84,18 +100,29 @@ DEFAULT_DECLINE_MIN_PD = 0.50
 # ---------------------------------------------------------------------------
 # age_band and income_band are computed ONLY for the audit; they are never model
 # features (so the model does not consume a protected-style grouping).
-AGE_BANDS = [
-    (18, 25, "18-25"),
-    (26, 35, "26-35"),
-    (36, 45, "36-45"),
-    (46, 55, "46-55"),
-    (56, 65, "56-65"),
-    (66, 200, "66+"),
-]
+# AGE_BANDS / age_band / MITIGATION_ATTRIBUTE live in app.core.features so the
+# runtime and the offline pipeline group applicants identically.
 
 # income quantile cut points (learned on the training split) used for audit bands
 INCOME_BAND_QUANTILES = [0.33, 0.66, 0.90]
 INCOME_BAND_LABELS = ["low", "lower-middle", "upper-middle", "high"]
+
+# The "four-fifths" rule: a selection-rate ratio below this floor is flagged as
+# a disparate-impact breach in the audit dashboard.
+DISPARATE_IMPACT_FLOOR = 0.80
+
+# Equalized-odds post-processing: groups below this size keep the pooled
+# threshold, so a few rows cannot drive a randomised decision rule.
+MITIGATION_MIN_GROUP_SIZE = 50
+
+# Attributes the mitigation is fitted for. All are derivable from applicant
+# input (or from stored income cut points), so the toggle works online.
+MITIGATION_VARIANTS = [
+    "age_band",
+    "person_home_ownership",
+    "loan_intent",
+    "income_band",
+]
 
 # Attributes the dataset does not contain. Reported explicitly as "not available"
 # so the audit never implies coverage it does not have.

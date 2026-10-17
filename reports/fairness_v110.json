@@ -1,0 +1,374 @@
+{
+  "model_version": "trustscore-1.1.0",
+  "min_group_size": 30,
+  "disparate_impact_floor": 0.8,
+  "definitions": {
+    "positive_prediction": "approved (decision band = approve)",
+    "favourable_outcome": "repaid (loan_status == 0)",
+    "selection_rate": "share of group approved",
+    "tpr": "P(approved | repaid)",
+    "fpr": "P(approved | defaulted)",
+    "precision": "P(repaid | approved)",
+    "disparate_impact_ratio": "min/max selection rate across adequately-sized groups; the 'four-fifths rule' flags a ratio below 0.80",
+    "equalized_odds_difference": "max(TPR gap, FPR gap) across adequately-sized groups"
+  },
+  "overall": {
+    "n": 6484,
+    "selection_rate": 0.45681677976557683,
+    "tpr": 0.5742202921437031,
+    "fpr": 0.03737658674188998,
+    "default_rate": 0.21869216533004318
+  },
+  "attributes": {
+    "person_home_ownership": {
+      "label": "Home ownership",
+      "groups": [
+        {
+          "n": 2637,
+          "selection_rate": 0.5301478953356087,
+          "tpr": 0.5925282363162467,
+          "fpr": 0.10149253731343283,
+          "precision": 0.9756795422031473,
+          "mean_pd": 0.12863679298201686,
+          "group": "MORTGAGE",
+          "low_sample": false
+        },
+        {
+          "n": 15,
+          "selection_rate": 0.2,
+          "tpr": 0.3333333333333333,
+          "fpr": 0.0,
+          "precision": 1.0,
+          "mean_pd": 0.3922226259767869,
+          "group": "OTHER",
+          "low_sample": true
+        },
+        {
+          "n": 493,
+          "selection_rate": 0.8742393509127789,
+          "tpr": 0.9493392070484582,
+          "fpr": 0.0,
+          "precision": 1.0,
+          "mean_pd": 0.07833338412468531,
+          "group": "OWN",
+          "low_sample": false
+        },
+        {
+          "n": 3339,
+          "selection_rate": 0.33842467804731957,
+          "tpr": 0.4828335506301608,
+          "fpr": 0.018304431599229287,
+          "precision": 0.9831858407079646,
+          "mean_pd": 0.31412406333582965,
+          "group": "RENT",
+          "low_sample": false
+        }
+      ],
+      "summary": {
+        "selection_rate_ratio": 0.3871075783696718,
+        "disparate_impact_ratio": 0.3871075783696718,
+        "disparate_impact_pass": false,
+        "demographic_parity_difference": 0.5358146728654594,
+        "equal_opportunity_difference": 0.4665056564182974,
+        "equalized_odds_difference": 0.4665056564182974,
+        "tpr_range": 0.4665056564182974,
+        "fpr_range": 0.10149253731343283,
+        "n_groups_considered": 3
+      }
+    },
+    "age_band": {
+      "label": "Age band",
+      "groups": [
+        {
+          "n": 3077,
+          "selection_rate": 0.43808904777380564,
+          "tpr": 0.5617882749894559,
+          "fpr": 0.0226628895184136,
+          "precision": 0.9881305637982196,
+          "mean_pd": 0.23517230340600734,
+          "group": "18-25",
+          "low_sample": false
+        },
+        {
+          "n": 2721,
+          "selection_rate": 0.4626975376699743,
+          "tpr": 0.5712290502793296,
+          "fpr": 0.055846422338568937,
+          "precision": 0.9745830023828436,
+          "mean_pd": 0.20888893955778554,
+          "group": "26-35",
+          "low_sample": false
+        },
+        {
+          "n": 560,
+          "selection_rate": 0.5160714285714286,
+          "tpr": 0.6367713004484304,
+          "fpr": 0.043859649122807015,
+          "precision": 0.9826989619377162,
+          "mean_pd": 0.20582721377676708,
+          "group": "36-45",
+          "low_sample": false
+        },
+        {
+          "n": 102,
+          "selection_rate": 0.49019607843137253,
+          "tpr": 0.6410256410256411,
+          "fpr": 0.0,
+          "precision": 1.0,
+          "mean_pd": 0.2218882830519622,
+          "group": "46-55",
+          "low_sample": false
+        },
+        {
+          "n": 18,
+          "selection_rate": 0.7222222222222222,
+          "tpr": 0.7647058823529411,
+          "fpr": 0.0,
+          "precision": 1.0,
+          "mean_pd": 0.0909162113439037,
+          "group": "56-65",
+          "low_sample": true
+        },
+        {
+          "n": 5,
+          "selection_rate": 0.6,
+          "tpr": 0.6,
+          "fpr": null,
+          "precision": 1.0,
+          "mean_pd": 0.2024636853140218,
+          "group": "66+",
+          "low_sample": true
+        },
+        {
+          "n": 1,
+          "selection_rate": 0.0,
+          "tpr": 0.0,
+          "fpr": null,
+          "precision": null,
+          "mean_pd": 0.020531400966183576,
+          "group": "unknown",
+          "low_sample": true
+        }
+      ],
+      "summary": {
+        "selection_rate_ratio": 0.8488922725028759,
+        "disparate_impact_ratio": 0.8488922725028759,
+        "disparate_impact_pass": true,
+        "demographic_parity_difference": 0.07798238079762299,
+        "equal_opportunity_difference": 0.07923736603618514,
+        "equalized_odds_difference": 0.07923736603618514,
+        "tpr_range": 0.07923736603618514,
+        "fpr_range": 0.055846422338568937,
+        "n_groups_considered": 4
+      }
+    },
+    "income_band": {
+      "label": "Income band",
+      "groups": [
+        {
+          "n": 661,
+          "selection_rate": 0.686838124054463,
+          "tpr": 0.7341137123745819,
+          "fpr": 0.23809523809523808,
+          "precision": 0.9669603524229075,
+          "mean_pd": 0.0893243234258523,
+          "group": "high",
+          "low_sample": false
+        },
+        {
+          "n": 2139,
+          "selection_rate": 0.25292192613370734,
+          "tpr": 0.39481481481481484,
+          "fpr": 0.010139416983523447,
+          "precision": 0.9852125693160814,
+          "mean_pd": 0.36284519586884495,
+          "group": "low",
+          "low_sample": false
+        },
+        {
+          "n": 2142,
+          "selection_rate": 0.4565826330532213,
+          "tpr": 0.5518624641833811,
+          "fpr": 0.037783375314861464,
+          "precision": 0.9846625766871165,
+          "mean_pd": 0.1954257649517642,
+          "group": "lower-middle",
+          "low_sample": false
+        },
+        {
+          "n": 1542,
+          "selection_rate": 0.6413748378728924,
+          "tpr": 0.7093954843408594,
+          "fpr": 0.08875739644970414,
+          "precision": 0.9848331648129424,
+          "mean_pd": 0.1159571517901483,
+          "group": "upper-middle",
+          "low_sample": false
+        }
+      ],
+      "summary": {
+        "selection_rate_ratio": 0.3682409541285915,
+        "disparate_impact_ratio": 0.3682409541285915,
+        "disparate_impact_pass": false,
+        "demographic_parity_difference": 0.43391619792075564,
+        "equal_opportunity_difference": 0.33929889755976705,
+        "equalized_odds_difference": 0.33929889755976705,
+        "tpr_range": 0.33929889755976705,
+        "fpr_range": 0.22795582111171464,
+        "n_groups_considered": 4
+      }
+    },
+    "loan_intent": {
+      "label": "Loan purpose",
+      "groups": [
+        {
+          "n": 1012,
+          "selection_rate": 0.4160079051383399,
+          "tpr": 0.5726256983240223,
+          "fpr": 0.037162162162162164,
+          "precision": 0.9738717339667459,
+          "mean_pd": 0.2928623401759412,
+          "group": "DEBTCONSOLIDATION",
+          "low_sample": false
+        },
+        {
+          "n": 1314,
+          "selection_rate": 0.4748858447488584,
+          "tpr": 0.5712962962962963,
+          "fpr": 0.029914529914529916,
+          "precision": 0.9887820512820513,
+          "mean_pd": 0.1822879597438506,
+          "group": "EDUCATION",
+          "low_sample": false
+        },
+        {
+          "n": 728,
+          "selection_rate": 0.4478021978021978,
+          "tpr": 0.5824175824175825,
+          "fpr": 0.04395604395604396,
+          "precision": 0.9754601226993865,
+          "mean_pd": 0.2528810465414114,
+          "group": "HOMEIMPROVEMENT",
+          "low_sample": false
+        },
+        {
+          "n": 1234,
+          "selection_rate": 0.4213938411669368,
+          "tpr": 0.5570175438596491,
+          "fpr": 0.037267080745341616,
+          "precision": 0.9769230769230769,
+          "mean_pd": 0.27539340965987263,
+          "group": "MEDICAL",
+          "low_sample": false
+        },
+        {
+          "n": 1096,
+          "selection_rate": 0.48175182481751827,
+          "tpr": 0.5896551724137931,
+          "fpr": 0.06637168141592921,
+          "precision": 0.9715909090909091,
+          "mean_pd": 0.1969613904025036,
+          "group": "PERSONAL",
+          "low_sample": false
+        },
+        {
+          "n": 1100,
+          "selection_rate": 0.49363636363636365,
+          "tpr": 0.5764331210191083,
+          "fpr": 0.0,
+          "precision": 1.0,
+          "mean_pd": 0.14261049789998978,
+          "group": "VENTURE",
+          "low_sample": false
+        }
+      ],
+      "summary": {
+        "selection_rate_ratio": 0.8427416126191047,
+        "disparate_impact_ratio": 0.8427416126191047,
+        "disparate_impact_pass": true,
+        "demographic_parity_difference": 0.07762845849802374,
+        "equal_opportunity_difference": 0.03263762855414398,
+        "equalized_odds_difference": 0.06637168141592921,
+        "tpr_range": 0.03263762855414398,
+        "fpr_range": 0.06637168141592921,
+        "n_groups_considered": 6
+      }
+    },
+    "cb_person_default_on_file": {
+      "label": "Prior default on file",
+      "groups": [
+        {
+          "n": 5318,
+          "selection_rate": 0.5221887927792404,
+          "tpr": 0.6298087998157107,
+          "fpr": 0.044012282497441144,
+          "precision": 0.9845156643860281,
+          "mean_pd": 0.18432290778958896,
+          "group": "N",
+          "low_sample": false
+        },
+        {
+          "n": 1166,
+          "selection_rate": 0.15866209262435677,
+          "tpr": 0.2413793103448276,
+          "fpr": 0.022675736961451247,
+          "precision": 0.9459459459459459,
+          "mean_pd": 0.38794849460548964,
+          "group": "Y",
+          "low_sample": false
+        }
+      ],
+      "summary": {
+        "selection_rate_ratio": 0.3038404784214365,
+        "disparate_impact_ratio": 0.3038404784214365,
+        "disparate_impact_pass": false,
+        "demographic_parity_difference": 0.3635267001548836,
+        "equal_opportunity_difference": 0.38842948947088307,
+        "equalized_odds_difference": 0.38842948947088307,
+        "tpr_range": 0.38842948947088307,
+        "fpr_range": 0.021336545535989897,
+        "n_groups_considered": 2
+      }
+    }
+  },
+  "unavailable_attributes": [
+    "gender",
+    "race/ethnicity",
+    "geography/region",
+    "marital status",
+    "disability status"
+  ],
+  "disclaimer": "This dashboard reports statistical disparities between groups. It does not establish legal compliance or non-compliance, and it is not a legal opinion.",
+  "guardrail": {
+    "disparate_impact_floor": 0.8,
+    "passed": false,
+    "n_breaches": 3,
+    "breaches": [
+      {
+        "attribute": "person_home_ownership",
+        "label": "Home ownership",
+        "disparate_impact_ratio": 0.3871075783696718,
+        "floor": 0.8,
+        "lowest_group": "RENT",
+        "lowest_selection_rate": 0.33842467804731957
+      },
+      {
+        "attribute": "income_band",
+        "label": "Income band",
+        "disparate_impact_ratio": 0.3682409541285915,
+        "floor": 0.8,
+        "lowest_group": "low",
+        "lowest_selection_rate": 0.25292192613370734
+      },
+      {
+        "attribute": "cb_person_default_on_file",
+        "label": "Prior default on file",
+        "disparate_impact_ratio": 0.3038404784214365,
+        "floor": 0.8,
+        "lowest_group": "Y",
+        "lowest_selection_rate": 0.15866209262435677
+      }
+    ],
+    "mitigation_attribute": "age_band"
+  }
+}

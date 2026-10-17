@@ -38,6 +38,7 @@ from app.core.features import (
     CATEGORICAL_FEATURES,
     MODEL_FEATURES,
     NUMERIC_FEATURES,
+    PORTFOLIO_KEY_PREFIX,
     TabularPreprocessor,
 )
 from app.services.counterfactual import find_counterfactuals
@@ -51,6 +52,12 @@ from app.services.decision import (
     expected_cost,
     grid_thresholds,
     realized_cost,
+)
+from app.services.mitigation import (
+    apply_equalized_odds,
+    fit_equalized_odds,
+    group_labels,
+    summarise as summarise_mitigation,
 )
 from app.services.reasons import top_reasons
 
@@ -227,6 +234,166 @@ def main() -> None:
         test_audit, y_test, p_cal_test, decisions_test, config.MODEL_VERSION
     )
 
+    # -------------------------------------------------------------- mitigation
+    # Fit the equalized-odds post-processor on the *validation* split (never on
+    # test) for every derivable group attribute, then measure each on the
+    # held-out test split. This is the "Beta" model: same booster, a
+    # fairness-aware decision rule on top.
+    _log("fitting equalized-odds post-processing ...")
+    test_keys = [f"{PORTFOLIO_KEY_PREFIX}:{i}" for i in range(len(test))]
+
+    def _groups(frame, attribute: str):
+        return frame[attribute].astype("string").fillna("unknown").tolist()
+
+    def _mitigated_decisions(attribute: str, params: dict) -> np.ndarray:
+        approved_m = apply_equalized_odds(
+            p_cal_test, _groups(test_audit, attribute), params, keys=test_keys
+        )
+        return np.where(
+            approved_m & (decisions_test != APPROVE),
+            APPROVE,
+            np.where((~approved_m) & (decisions_test == APPROVE), REFER, decisions_test),
+        )
+
+    def _attr_summary(report: dict, attribute: str) -> dict:
+        block = report.get("attributes", {}).get(attribute, {})
+        return block.get("summary", {}) or {}
+
+    variants: dict = {}
+    variant_fairness: dict = {}
+    for attribute in config.MITIGATION_VARIANTS:
+        if attribute not in val_audit.columns or attribute not in test_audit.columns:
+            continue
+        params = fit_equalized_odds(
+            y=y_val,
+            p=p_cal_val,
+            groups=_groups(val_audit, attribute),
+            base_threshold=approve_max_pd,
+            min_group_size=config.MITIGATION_MIN_GROUP_SIZE,
+            attribute=attribute,
+        )
+        decisions_m = _mitigated_decisions(attribute, params)
+        fairness_m = fair.compute_fairness(
+            test_audit, y_test, p_cal_test, decisions_m, config.FAIR_MODEL_VERSION
+        )
+        realized_m = realized_cost(y_test, test_amounts, decisions_m, costs)
+        s_base = _attr_summary(fairness_report, attribute)
+        s_mit = _attr_summary(fairness_m, attribute)
+        di_base = s_base.get("disparate_impact_ratio")
+        di_mit = s_mit.get("disparate_impact_ratio")
+        variants[attribute] = {
+            "params": params,
+            "summary": summarise_mitigation(params),
+            "impact": {
+                "attribute": attribute,
+                "approval_rate_base": float((decisions_test == APPROVE).mean()),
+                "approval_rate_mitigated": float((decisions_m == APPROVE).mean()),
+                "realized_cost_per_loan_base": float(realized / max(test_amounts.sum(), 1.0)),
+                "realized_cost_per_loan_mitigated": float(
+                    realized_m / max(test_amounts.sum(), 1.0)
+                ),
+                "disparate_impact_ratio_base": di_base,
+                "disparate_impact_ratio_mitigated": di_mit,
+                "equalized_odds_difference_base": s_base.get("equalized_odds_difference"),
+                "equalized_odds_difference_mitigated": s_mit.get("equalized_odds_difference"),
+                "n_breaches_base": fairness_report["guardrail"]["n_breaches"],
+                "n_breaches_mitigated": fairness_m["guardrail"]["n_breaches"],
+                "disparate_impact_gain": (
+                    (di_mit - di_base) if (di_mit is not None and di_base is not None) else None
+                ),
+            },
+            "guardrail": fairness_m["guardrail"],
+        }
+        variant_fairness[attribute] = fairness_m
+
+    # Pick the variant that removes the most breaches, then improves DI the most.
+    def _rank(attribute: str):
+        imp = variants[attribute]["impact"]
+        return (imp["n_breaches_mitigated"], -(imp["disparate_impact_gain"] or 0.0))
+
+    default_attribute = (
+        sorted(variants, key=_rank)[0] if variants else config.MITIGATION_ATTRIBUTE
+    )
+    default_variant = variants[default_attribute]
+    mitigation_params = default_variant["params"]
+    fairness_mitigated = variant_fairness[default_attribute]
+    mitigation_block = {
+        "method": "equalized_odds",
+        "attribute": default_attribute,
+        "base_threshold": float(approve_max_pd),
+        "target_tpr": mitigation_params["target_tpr"],
+        "target_fpr": mitigation_params["target_fpr"],
+        "min_group_size": config.MITIGATION_MIN_GROUP_SIZE,
+        "params": mitigation_params,
+        "variants": variants,
+    }
+    mitigation_impact = default_variant["impact"]
+    for attribute, block in variants.items():
+        imp = block["impact"]
+        _log(
+            f"  {attribute:24s} breaches {imp['n_breaches_base']} -> "
+            f"{imp['n_breaches_mitigated']}; DI {imp['disparate_impact_ratio_base']} -> "
+            f"{imp['disparate_impact_ratio_mitigated']}"
+        )
+    _log(f"mitigation default attribute: {default_attribute}")
+
+    # --------------------------------------------------------------- portfolio
+    # The full test split, so the audit console's guardrail, A/B comparison and
+    # bias injector report exactly the same figures as the model card (a sample
+    # would drift the disparate-impact ratio across the four-fifths floor). Every
+    # audited attribute is carried as an integer code plus a shared ``levels``
+    # table, so mitigation, A/B and the bias injector can all target any of them.
+    #
+    # Scores are stored verbatim (JSON round-trips a float exactly). Rounding --
+    # even to 8 decimals -- was enough to flip a handful of decisions where the
+    # equalized-odds cut-offs sit in the dense part of the score distribution, and
+    # that moved the live disparate-impact ratio away from the offline value.
+    # Exposure is rounded to the nearest $100. This is public demo data, not PII.
+    port_idx = np.arange(len(test))
+
+    portfolio_attributes = [
+        a
+        for a in [config.MITIGATION_ATTRIBUTE, *config.MITIGATION_VARIANTS]
+        if a in test_audit.columns
+    ]
+    # de-duplicate while preserving order
+    portfolio_attributes = list(dict.fromkeys(portfolio_attributes))
+
+    group_lists = {a: _groups(test_audit, a) for a in portfolio_attributes}
+    levels = {
+        a: sorted({group_lists[a][int(i)] for i in port_idx})
+        for a in portfolio_attributes
+    }
+    code_of = {a: {label: k for k, label in enumerate(levels[a])} for a in portfolio_attributes}
+
+    portfolio_rows = [
+        [
+            float(p_cal_test[i]),
+            round(float(test_amounts[i]) / 100.0) * 100.0,
+            int(y_test[i]),
+            [code_of[a][group_lists[a][int(i)]] for a in portfolio_attributes],
+        ]
+        for i in port_idx
+    ]
+    portfolio = {
+        "version": config.MODEL_VERSION,
+        "n": len(portfolio_rows),
+        "group_attribute": config.MITIGATION_ATTRIBUTE
+        if config.MITIGATION_ATTRIBUTE in portfolio_attributes
+        else portfolio_attributes[0],
+        "attributes": portfolio_attributes,
+        "levels": levels,
+        "group_values": levels,
+        "fields": ["pd", "exposure", "y", "codes"],
+        "row_key_prefix": PORTFOLIO_KEY_PREFIX,
+        "rows": portfolio_rows,
+        "note": (
+            "Rows from the public test split: calibrated scores verbatim, exposure "
+            "rounded to the nearest 100. Used only for simulated portfolio "
+            "analytics; contains no personal data."
+        ),
+    }
+
     # ------------------------------------------------------------ top features
     contribs = np.asarray(booster.predict(X_test, pred_contrib=True))
     mean_abs = np.abs(contribs[:, :-1]).mean(axis=0)
@@ -357,25 +524,201 @@ def main() -> None:
         },
         "limitations": mc.LIMITATIONS,
         "drift": drift_report,
+        "guardrail": fairness_report["guardrail"],
+        "mitigation_available": {
+            "method": "equalized_odds",
+            "attribute": default_attribute,
+            "attributes": list(variants.keys()),
+            "model_version": config.FAIR_MODEL_VERSION,
+            "variants": {
+                attribute: variants[attribute]["impact"] for attribute in variants
+            },
+        },
     }
     config.METADATA_JSON.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     _log(f"wrote {config.METADATA_JSON}")
+
+    # ------------------------------------------- Beta artifact (fairness-tuned)
+    # Same booster, a different decision rule. A distinct artifact so the two
+    # models can be A/B compared and the mitigation can be toggled.
+    fair_artifact = dict(artifact)
+    fair_artifact["version"] = config.FAIR_MODEL_VERSION
+    fair_artifact["base_version"] = config.MODEL_VERSION
+    fair_artifact["mitigation"] = mitigation_block
+    joblib.dump(fair_artifact, config.MODEL_FAIR_ARTIFACT)
+    _log(f"wrote {config.MODEL_FAIR_ARTIFACT}")
+
+    metadata_fair = dict(metadata)
+    metadata_fair["version"] = config.FAIR_MODEL_VERSION
+    metadata_fair["base_version"] = config.MODEL_VERSION
+    metadata_fair["fairness"] = fairness_mitigated
+    metadata_fair["mitigation"] = mitigation_block
+    metadata_fair["mitigation_impact"] = mitigation_impact
+    config.METADATA_FAIR_JSON.write_text(
+        json.dumps(metadata_fair, indent=2), encoding="utf-8"
+    )
+    _log(f"wrote {config.METADATA_FAIR_JSON}")
+
+    # ------------------------------------------------------- reference + registry
+    reference = drift_mod.build_reference_distributions(train)
+    config.REFERENCE_DIST_JSON.write_text(json.dumps(reference, indent=2), encoding="utf-8")
+    _log(f"wrote {config.REFERENCE_DIST_JSON}")
+
+    config.PORTFOLIO_JSON.write_text(json.dumps(portfolio), encoding="utf-8")
+    _log(f"wrote {config.PORTFOLIO_JSON}")
+
+    def _model_entry(
+        version, label, role, artifact_name, metadata_name, fairness, mitigation,
+        attribute=config.MITIGATION_ATTRIBUTE,
+    ):
+        attr_summary = (fairness.get("attributes", {}).get(attribute, {}) or {}).get(
+            "summary", {}
+        )
+        return {
+            "version": version,
+            "label": label,
+            "role": role,
+            "artifact": artifact_name,
+            "metadata": metadata_name,
+            "trained_at": trained_at,
+            "metrics": {
+                "roc_auc": metrics["calibrated"].get("roc_auc"),
+                "pr_auc": metrics["calibrated"].get("pr_auc"),
+                "brier": metrics["calibrated"].get("brier"),
+                "ece": cal_report.get("ece"),
+            },
+            "thresholds": {
+                "approve_max_pd": float(approve_max_pd),
+                "decline_min_pd": float(decline_min_pd),
+            },
+            "fairness": {
+                "disparate_impact_floor": fairness.get("disparate_impact_floor"),
+                "guardrail_passed": fairness.get("guardrail", {}).get("passed"),
+                "n_breaches": fairness.get("guardrail", {}).get("n_breaches"),
+                "disparate_impact_ratio": attr_summary.get("disparate_impact_ratio"),
+                "equalized_odds_difference": attr_summary.get("equalized_odds_difference"),
+                "attribute": attribute,
+            },
+            "mitigation": mitigation,
+        }
+
+    registry = {
+        "generated_at": trained_at,
+        "default": config.MODEL_VERSION,
+        "fair": config.FAIR_MODEL_VERSION,
+        "group_attribute": config.MITIGATION_ATTRIBUTE,
+        "disparate_impact_floor": config.DISPARATE_IMPACT_FLOOR,
+        "mitigation_options": [
+            {
+                "id": "none",
+                "label": "No mitigation",
+                "description": "Raw model decision at the cost-optimal threshold.",
+            },
+            {
+                "id": "equalized_odds",
+                "label": "Equalized odds (post-processing)",
+                "attribute": default_attribute,
+                "description": (
+                    "Per-group randomised thresholds that equalise true- and "
+                    "false-positive rates across the chosen attribute's groups."
+                ),
+            },
+        ],
+        "mitigation_attributes": [
+            {
+                "id": attribute,
+                "label": fair.ATTRIBUTE_LABELS.get(attribute, attribute),
+                "impact": variants[attribute]["impact"],
+            }
+            for attribute in variants
+        ],
+        "group_definitions": {
+            "age_band": [
+                {"low": lo, "high": hi, "label": lbl} for lo, hi, lbl in config.AGE_BANDS
+            ],
+            "income_band": {
+                "cutpoints": [float(c) for c in income_cutpoints],
+                "labels": list(config.INCOME_BAND_LABELS),
+            },
+        },
+        "models": [
+            _model_entry(
+                config.MODEL_VERSION,
+                "Alpha — baseline",
+                "baseline",
+                "model.joblib",
+                "metadata.json",
+                fairness_report,
+                {"method": "none"},
+            ),
+            _model_entry(
+                config.FAIR_MODEL_VERSION,
+                "Beta — fairness-tuned",
+                "fair",
+                "model_fair.joblib",
+                "metadata_fair.json",
+                fairness_mitigated,
+                {
+                    "method": "equalized_odds",
+                    "attribute": default_attribute,
+                    "base_version": config.MODEL_VERSION,
+                    "summary": summarise_mitigation(mitigation_params),
+                    "variants": {
+                        attribute: {
+                            "summary": variants[attribute]["summary"],
+                            "impact": variants[attribute]["impact"],
+                            "guardrail": variants[attribute]["guardrail"],
+                        }
+                        for attribute in variants
+                    },
+                },
+                attribute=default_attribute,
+            ),
+        ],
+        "lineage": [
+            {
+                "version": config.MODEL_VERSION,
+                "trained_at": trained_at,
+                "role": "baseline",
+                "note": "Calibrated LightGBM + cost-optimal policy.",
+            },
+            {
+                "version": config.FAIR_MODEL_VERSION,
+                "trained_at": trained_at,
+                "role": "fair",
+                "parent": config.MODEL_VERSION,
+                "note": (
+                    "Adds equalized-odds post-processing on "
+                    f"{default_attribute} (default)."
+                ),
+            },
+        ],
+    }
+    config.REGISTRY_JSON.write_text(json.dumps(registry, indent=2), encoding="utf-8")
+    _log(f"wrote {config.REGISTRY_JSON}")
 
     # ---------------------------------------------------------------- reports
     config.REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     config.METRICS_JSON.write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     config.CALIBRATION_JSON.write_text(json.dumps(cal_report, indent=2), encoding="utf-8")
     config.FAIRNESS_JSON.write_text(json.dumps(fairness_report, indent=2), encoding="utf-8")
+    config.FAIRNESS_FAIR_JSON.write_text(
+        json.dumps(fairness_mitigated, indent=2), encoding="utf-8"
+    )
     config.DRIFT_JSON.write_text(json.dumps(drift_report, indent=2), encoding="utf-8")
 
     context = {
         "version": config.MODEL_VERSION,
+        "fair_version": config.FAIR_MODEL_VERSION,
         "trained_at": trained_at,
         "dataset": dataset_block,
         "metrics": metrics,
         "thresholds": thresholds_block,
         "calibration": {"brier": cal_report.get("brier"), "ece": cal_report.get("ece")},
         "fairness": fairness_report,
+        "fairness_mitigated": fairness_mitigated,
+        "mitigation": mitigation_block,
+        "mitigation_impact": mitigation_impact,
         "top_features": top_features,
     }
     mc.write_model_card(context, config.MODEL_CARD_MD, config.MODEL_CARD_JSON)

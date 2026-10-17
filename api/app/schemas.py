@@ -59,6 +59,7 @@ class ReasonItem(BaseModel):
     detail: str
     direction: Literal["increases", "reduces"]
     text: str
+    code: Optional[str] = None
 
 
 class PredictResponse(BaseModel):
@@ -99,6 +100,12 @@ class DecisionRequest(BaseModel):
     # Optional policy override so the lender view can explore thresholds safely.
     approve_max_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     decline_min_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    # Fairness + context controls (used by the applicant flow and the auditor).
+    model: Optional[str] = None
+    apply_fairness: bool = False
+    mitigation_attribute: Optional[str] = None
+    region: str = "national"
+    use_macro_tilt: bool = False
 
 
 class CounterfactualScenario(BaseModel):
@@ -139,3 +146,82 @@ class StatsResponse(BaseModel):
     bands: dict
     window: str
     note: str | None = None
+
+
+# ---------------------------------------------------------------------------
+# Advanced features: async apply, policy simulation, A/B, drift, alerts, report
+# ---------------------------------------------------------------------------
+class ApplyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    applicant: Applicant
+    model: Optional[str] = None
+    apply_fairness: bool = False
+    mitigation_attribute: Optional[str] = None
+    region: str = "national"
+    use_macro_tilt: bool = False
+
+
+class JobResponse(BaseModel):
+    job_id: str
+    kind: str
+    status: str
+    created_at: str
+    updated_at: str
+    backend: str | None = None
+    events: list[dict] = []
+    result: dict | None = None
+    error: str | None = None
+
+
+class CostMatrixModel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    false_approve: float = Field(default=1.0, ge=0)
+    false_decline: float = Field(default=0.2, ge=0)
+    review: float = Field(default=0.05, ge=0)
+
+
+class PolicySimulationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    approve_max_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    decline_min_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    costs: Optional[CostMatrixModel] = None
+    apply_fairness: bool = False
+    mitigation_attribute: Optional[str] = None
+    model: Optional[str] = None
+    margin_rate: float = Field(default=0.12, ge=0, le=1)
+    loss_given_default: float = Field(default=1.0, ge=0)
+    include_sweep: bool = True
+    max_pd_floor: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+
+
+class AbCompareRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model_a: Optional[str] = None
+    model_b: Optional[str] = None
+    approve_max_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    decline_min_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    costs: Optional[CostMatrixModel] = None
+    mitigation_attribute: Optional[str] = None
+
+
+class BiasInjectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    group: str
+    factor: float = Field(default=1.6, ge=0.1, le=10.0)
+    approve_max_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    decline_min_pd: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    mitigation_attribute: Optional[str] = None
+
+
+class AlertTestRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    severity: Literal["warning", "critical"] = "warning"
+    message: str = "Synthetic drift alert (test)."
+    shift: float = Field(default=0.0, ge=-3.0, le=3.0)
+    deliver: bool = False

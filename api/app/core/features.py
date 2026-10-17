@@ -61,6 +61,49 @@ DERIVED_FEATURES = ["loan_percent_income", "emp_length_missing", "int_rate_missi
 
 MODEL_FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
+# ---------------------------------------------------------------------------
+# Audit / mitigation groupings
+# ---------------------------------------------------------------------------
+# These are *never* model features. They are derived at inference time so the
+# fairness audit and the equalized-odds mitigation can address the same groups
+# online and offline.
+AGE_BANDS = [
+    (18, 25, "18-25"),
+    (26, 35, "26-35"),
+    (36, 45, "36-45"),
+    (46, 55, "46-55"),
+    (56, 65, "56-65"),
+    (66, 200, "66+"),
+]
+
+# The attribute used for post-processing mitigation. Age band is chosen because
+# it is derivable from the applicant's own input (so mitigation works online)
+# and it is one of the groups where the audit shows the largest disparity.
+MITIGATION_ATTRIBUTE = "age_band"
+
+# Row keys for the *deterministic* randomised tie-break in equalized-odds
+# post-processing (see services/mitigation.py). The offline evaluation and the
+# live portfolio simulator must use the same key for a row, otherwise the
+# randomised decisions -- and therefore the reported disparate-impact ratio --
+# differ between the model card and the auditor console. The portfolio artifact
+# records this prefix so the runtime can never drift from training.
+PORTFOLIO_KEY_PREFIX = "test"
+
+
+def age_band(age) -> str:
+    """Map an age to its audit band. Returns ``"unknown"`` for missing values."""
+    try:
+        value = float(age)
+    except (TypeError, ValueError):
+        return "unknown"
+    if value != value:  # NaN
+        return "unknown"
+    for low, high, label in AGE_BANDS:
+        if low <= value <= high:
+            return label
+    return "unknown"
+
+
 CATEGORY_OPTIONS = {
     "person_home_ownership": ["RENT", "OWN", "MORTGAGE", "OTHER"],
     "loan_intent": [

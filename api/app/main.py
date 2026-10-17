@@ -19,7 +19,8 @@ from starlette.responses import JSONResponse
 from . import db
 from .core.config import get_settings
 from .limiter import limiter
-from .routers import meta, scoring
+from .middleware import PIIMaskingMiddleware
+from .routers import audit, jobs, meta, scoring
 
 logging.basicConfig(level=logging.INFO)
 
@@ -63,6 +64,9 @@ class StripApiPrefix:
 
 app.add_middleware(StripApiPrefix)
 
+# Privacy gateway: strip direct identifiers from JSON bodies before routing.
+app.add_middleware(PIIMaskingMiddleware, salt=settings.pii_salt)
+
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -85,11 +89,13 @@ app.add_middleware(
 
 app.include_router(meta.router)
 app.include_router(scoring.router)
+app.include_router(jobs.router)
+app.include_router(audit.router)
 
 
 @app.on_event("startup")
 def _startup() -> None:
-    """Best-effort: make sure the logging table exists. Never blocks startup."""
+    """Best-effort: make sure the logging tables exist. Never blocks startup."""
     db.init_db()
 
 
@@ -104,9 +110,39 @@ def root() -> dict:
             "POST /explain",
             "POST /decision",
             "POST /counterfactual",
+            "POST /blueprint",
+            "POST /apply",
+            "GET /jobs/{job_id}",
+            "WS /ws/jobs/{job_id}",
             "GET /model",
+            "GET /models",
+            "GET /models/{version}",
+            "GET /registry",
+            "GET /mitigation",
+            "GET /context",
+            "GET /portfolio",
+            "POST /policy/simulate",
+            "POST /ab/compare",
+            "POST /bias/inject",
+            "GET /drift/live",
+            "POST /alerts/test",
+            "GET /report.pdf",
             "GET /health",
             "GET /stats",
+            "GET /cache/stats",
         ],
         "disclaimer": "Simulated decisions only. Not a loan offer.",
+    }
+
+
+@app.get("/cache/stats", tags=["metadata"])
+def cache_stats() -> dict:
+    """Cache and job-bus counters (handy for demos and debugging)."""
+    from .jobs import bus_stats
+    from .services.cache import NARRATIVE_CACHE, RECOURSE_CACHE
+
+    return {
+        "recourse_cache": RECOURSE_CACHE.stats(),
+        "narrative_cache": NARRATIVE_CACHE.stats(),
+        "job_bus": bus_stats(),
     }

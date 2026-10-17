@@ -166,10 +166,73 @@ def build_model_card(context: dict) -> tuple[str, dict]:
         lines.append(f"- Selection-rate ratio (min/max): **{_fmt(s['selection_rate_ratio'])}**")
         lines.append(f"- Demographic parity difference: {_fmt(s['demographic_parity_difference'])}")
         lines.append(f"- Equal opportunity difference (TPR gap): {_fmt(s['equal_opportunity_difference'])}")
+        lines.append(
+            f"- Equalized odds difference (max TPR/FPR gap): "
+            f"{_fmt(s.get('equalized_odds_difference'))}"
+        )
+        di = s.get("disparate_impact_ratio")
+        if di is not None:
+            status = "PASS" if s.get("disparate_impact_pass") else "BREACH"
+            lines.append(
+                f"- Disparate-impact ratio (four-fifths rule): **{_fmt(di)}** "
+                f"[{status} vs floor {_fmt(fairness.get('disparate_impact_floor'))}]"
+            )
         lines.append("")
     lines.append("**Not available in this dataset (reported honestly, not estimated):** "
                  + ", ".join(fairness["unavailable_attributes"]) + ".")
     lines.append("")
+
+    guardrail = fairness.get("guardrail")
+    if guardrail:
+        lines.append("### Guardrail")
+        lines.append("")
+        lines.append(
+            f"- Disparate-impact floor: **{_fmt(guardrail['disparate_impact_floor'])}**"
+        )
+        lines.append(f"- Status: **{'PASS' if guardrail['passed'] else 'BREACH'}** "
+                     f"({guardrail['n_breaches']} attribute(s) below the floor)")
+        lines.append("")
+
+    mitigation = context.get("mitigation")
+    if mitigation:
+        lines.append("## Fairness mitigation (equalized odds)")
+        lines.append("")
+        lines.append(
+            "The fairness-tuned model (**Beta**, "
+            f"`{context.get('fair_version', 'trustscore-1.1.0')}`) keeps the same "
+            "booster and appends a *post-processing* rule: per-group randomised "
+            "probability thresholds that equalise the true-positive and "
+            "false-positive rates across age bands."
+        )
+        lines.append("")
+        lines.append(f"- Method: **{mitigation['method']}**")
+        lines.append(f"- Attribute: `{mitigation['attribute']}`")
+        lines.append(f"- Target TPR / FPR: {_fmt(mitigation['target_tpr'])} / "
+                     f"{_fmt(mitigation['target_fpr'])}")
+        lines.append(f"- Base approve threshold: {_fmt(mitigation['base_threshold'])}")
+        impact = context.get("mitigation_impact") or {}
+        if impact:
+            lines.append("")
+            lines.append("| Metric | Baseline | After mitigation |")
+            lines.append("| --- | --- | --- |")
+            lines.append(
+                f"| Approval rate | {_fmt(impact.get('approval_rate_base'), 3)} | "
+                f"{_fmt(impact.get('approval_rate_mitigated'), 3)} |"
+            )
+            lines.append(
+                f"| Realized cost per loan | {_fmt(impact.get('realized_cost_per_loan_base'))} | "
+                f"{_fmt(impact.get('realized_cost_per_loan_mitigated'))} |"
+            )
+            lines.append(
+                f"| Disparate-impact ratio | {_fmt(impact.get('disparate_impact_ratio_base'))} | "
+                f"{_fmt(impact.get('disparate_impact_ratio_mitigated'))} |"
+            )
+            lines.append(
+                f"| Equalized odds difference | "
+                f"{_fmt(impact.get('equalized_odds_difference_base'))} | "
+                f"{_fmt(impact.get('equalized_odds_difference_mitigated'))} |"
+            )
+        lines.append("")
 
     lines.append("## Most influential features")
     lines.append("")
@@ -199,9 +262,10 @@ def build_model_card(context: dict) -> tuple[str, dict]:
     lines.append("")
     lines.append(f"- Model version: **{v}**")
     lines.append(f"- Fixed random seed: {ds['seed']}")
-    lines.append("- Artifacts: `api/artifacts/model.joblib`, `api/artifacts/metadata.json`")
+    lines.append("- Artifacts: `api/artifacts/model.joblib`, `api/artifacts/metadata.json`, "
+                 "`api/artifacts/model_fair.joblib`, `api/artifacts/registry.json`")
     lines.append("- Reports: `reports/metrics_v1.json`, `reports/fairness_v1.json`, "
-                 "`reports/calibration_v1.json`")
+                 "`reports/fairness_v110.json`, `reports/calibration_v1.json`")
     lines.append("")
 
     markdown = "\n".join(lines)
@@ -217,6 +281,10 @@ def build_model_card(context: dict) -> tuple[str, dict]:
         "calibration": cal,
         "thresholds": thr,
         "fairness": fairness,
+        "fairness_guardrail": fairness.get("guardrail"),
+        "fairness_mitigated": context.get("fairness_mitigated"),
+        "mitigation": context.get("mitigation"),
+        "mitigation_impact": context.get("mitigation_impact"),
         "top_features": context["top_features"],
         "limitations": LIMITATIONS,
     }

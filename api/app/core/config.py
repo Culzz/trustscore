@@ -20,9 +20,23 @@ class Settings(BaseSettings):
 
     app_name: str = "TrustScore API"
     model_version: str = "trustscore-1.0.0"
+    fair_model_version: str = "trustscore-1.1.0"
 
     # Where the bundled artifact + metadata live.
     artifacts_dir: Path = _API_DIR / "artifacts"
+
+    # Async jobs / live drift. With no broker everything runs in-process (the
+    # Vercel default); point CELERY_BROKER_URL at Redis to use real workers.
+    celery_broker_url: str | None = None
+    redis_url: str | None = None
+    job_backend: str = "auto"  # auto | memory | celery
+    job_ttl_seconds: int = 900
+
+    # Optional webhook for drift/adversarial alerts (the "slack hook").
+    alert_webhook_url: str | None = None
+
+    # Salt for PII hashing in the privacy gateway. Override in production.
+    pii_salt: str = "trustscore-demo-salt"
 
     # Anonymised prediction log / counters.
     #   storage_backend: "auto" (postgres if DATABASE_URL set, else sqlite, else none)
@@ -57,6 +71,33 @@ class Settings(BaseSettings):
     @property
     def metadata_path(self) -> Path:
         return self.artifacts_dir / "metadata.json"
+
+    @property
+    def fair_model_artifact_path(self) -> Path:
+        return self.artifacts_dir / "model_fair.joblib"
+
+    @property
+    def fair_metadata_path(self) -> Path:
+        return self.artifacts_dir / "metadata_fair.json"
+
+    @property
+    def registry_path(self) -> Path:
+        return self.artifacts_dir / "registry.json"
+
+    @property
+    def reference_path(self) -> Path:
+        return self.artifacts_dir / "reference.json"
+
+    @property
+    def portfolio_path(self) -> Path:
+        return self.artifacts_dir / "portfolio.json"
+
+    @property
+    def resolved_job_backend(self) -> str:
+        backend = (self.job_backend or "auto").lower()
+        if backend == "auto":
+            return "celery" if (self.celery_broker_url or self.redis_url) else "memory"
+        return backend
 
 
 @lru_cache(maxsize=1)

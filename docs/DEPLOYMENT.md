@@ -1,15 +1,17 @@
 # Deployment
 
-Two shapes are supported. Start with the first unless you hit a limit.
+Three shapes are supported. Start with the first unless you hit a limit.
 
 * **A. Single Vercel project** — Next.js frontend + FastAPI as a serverless
-  Python function, one URL.
+  Python function, one URL. Jobs run in-process; progress degrades to polling.
 * **B. Split** — Next.js on Vercel, API as a Docker service on Render/Railway.
-  No serverless bundle limit; recommended if the Python bundle is too big or
-  cold starts annoy you.
+  No serverless bundle limit; WebSocket progress works. Recommended if the Python
+  bundle is too big or cold starts annoy you.
+* **C. Docker Compose with real workers** — the API plus Redis and a Celery
+  worker, for the full asynchronous path.
 
 The database is optional and provider-agnostic. The API is fully functional with
-logging disabled.
+logging disabled. So is Redis: without a broker, jobs run in-process.
 
 ---
 
@@ -43,6 +45,13 @@ docker compose up --build
 
 Predictions are logged to a local SQLite file, so the lender counters work with
 zero cloud setup.
+
+To run the real asynchronous path (Redis + Celery worker) as well:
+
+```bash
+REDIS_URL=redis://redis:6379/0 docker compose --profile async up --build
+# the API resolves JOB_BACKEND to celery and WS /ws/jobs/{id} streams live
+```
 
 ### Manual
 
@@ -111,6 +120,28 @@ python -m training.src.train
 
 ---
 
+## C. Docker Compose with real workers
+
+The full asynchronous path: a long-lived API, Redis, and a Celery worker.
+
+```bash
+REDIS_URL=redis://redis:6379/0 docker compose --profile async up --build
+```
+
+* `api` — FastAPI; `JOB_BACKEND` resolves to `celery` because a broker URL is set,
+  and `WS /ws/jobs/{id}` relays Redis pub/sub to the browser.
+* `redis` — broker plus result backend.
+* `worker` — `celery -A app.worker.celery_app worker`, running the identical
+  `run_application` flow as the in-process path.
+
+Any Docker host works (Render paid, Railway, Fly, a VPS). The only requirements
+are the `api/` image, a Redis URL, and `pip install -r api/requirements-async.txt`
+in that image. **Render's free plan has no background workers** — for a free
+single-service deployment use shape B and leave the broker unset, which keeps
+jobs in-process while WebSocket progress still works.
+
+---
+
 ## Environment variables
 
 See `.env.example` (API) and `web/.env.example` (web). Never commit `.env`.
@@ -121,6 +152,15 @@ See `.env.example` (API) and `web/.env.example` (web). Never commit `.env`.
 | `DATABASE_URL` | – | Postgres URI (any provider) |
 | `SQLITE_PATH` | `predictions.db` | SQLite file when backend is sqlite |
 | `LOG_PREDICTIONS` | `true` | Master switch for logging |
+| `JOB_BACKEND` | `auto` | `auto`, `memory`, `celery` |
+| `JOB_TTL_SECONDS` | `900` | In-memory job retention |
+| `REDIS_URL` | – | Enables the Celery path when set |
+| `CELERY_BROKER_URL` | – | Same, if you prefer an explicit broker |
+| `CELERY_RESULT_BACKEND` | – | Celery result store |
+| `ALERT_WEBHOOK_URL` | – | Slack-style webhook for drift alerts |
+| `PII_SALT` | `trustscore-demo-salt` | Salt for the privacy gateway; **change in production** |
+| `MODEL_VERSION` | `trustscore-1.0.0` | Default (Alpha) version |
+| `FAIR_MODEL_VERSION` | `trustscore-1.1.0` | Fairness-tuned (Beta) version |
 | `CORS_ORIGINS` | localhost | Comma-separated allowed origins |
 | `RATE_LIMIT` | `120/minute` | slowapi limit |
 | `ENABLE_DOCS` | `true` | Serve `/docs` and `/openapi.json` |
@@ -139,6 +179,21 @@ See `.env.example` (API) and `web/.env.example` (web). Never commit `.env`.
 
 * **`/model` returns 503** — training has not been run; `api/artifacts/model.joblib`
   and `api/artifacts/metadata.json` must exist (they are committed).
+* **`/portfolio` or `/policy/simulate` returns 503** — the audit portfolio is
+  missing; rerun `python -m training.src.train` to regenerate
+  `api/artifacts/portfolio.json` and `registry.json`.
 * **Counters always zero** — `STORAGE_BACKEND=none`, or `DATABASE_URL` unset, or
   the DB is unreachable. `/health` reports `database_configured`.
+* **`/drift/live` reports `simulated: true`** — expected without storage: with no
+  live stream there is no real traffic to compare, so the panel runs a labelled
+  synthetic window.
+* **Jobs stay `queued`** — `JOB_BACKEND=celery` is set but no worker is running.
+  Either start the worker (`docker compose --profile async up`) or unset the
+  broker so jobs run in-process.
+* **Applicant progress never updates on Vercel** — serverless functions cannot
+  hold a WebSocket. The client switches to polling automatically; if it does not,
+  check that `NEXT_PUBLIC_API_BASE_URL=/api` was set **before** the build.
 * **CORS errors in the browser** — add your frontend origin to `CORS_ORIGINS`.
+* **A `x-pii-redactions` header appears on a response** — that is the privacy
+  gateway removing a direct identifier from the request body, working as
+  intended.

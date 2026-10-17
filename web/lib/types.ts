@@ -171,17 +171,347 @@ export interface FairnessAttribute {
   groups: FairnessGroup[];
   summary: {
     selection_rate_ratio: number | null;
+    disparate_impact_ratio?: number | null;
+    disparate_impact_pass?: boolean;
     demographic_parity_difference: number | null;
     equal_opportunity_difference: number | null;
+    equalized_odds_difference?: number | null;
+    tpr_range?: number | null;
+    fpr_range?: number | null;
     n_groups_considered: number;
   };
+}
+
+export interface FairnessGuardrailBlock {
+  disparate_impact_floor: number;
+  passed: boolean;
+  n_breaches: number;
+  breaches: {
+    attribute: string;
+    label: string;
+    disparate_impact_ratio: number;
+    floor: number;
+    lowest_group: string;
+    lowest_selection_rate: number | null;
+  }[];
+  mitigation_attribute?: string;
 }
 
 export interface FairnessReport {
   model_version: string;
   min_group_size: number;
+  disparate_impact_floor?: number;
+  overall?: {
+    n: number;
+    selection_rate: number;
+    tpr: number;
+    fpr: number;
+    default_rate: number;
+  };
   definitions: Record<string, string>;
   attributes: Record<string, FairnessAttribute>;
+  guardrail?: FairnessGuardrailBlock;
   unavailable_attributes: string[];
   disclaimer: string;
+}
+
+// --- Advanced platform types -------------------------------------------------
+export type StepStatus = "pending" | "running" | "done" | "error" | "cached";
+
+export interface JobEvent {
+  step: string;
+  status: string;
+  label?: string;
+  at?: string;
+  band?: Band;
+  probability_of_default?: number;
+  routes?: number;
+  error?: string;
+}
+
+export interface JobResponse {
+  job_id: string;
+  kind: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  backend?: string | null;
+  events: JobEvent[];
+  result?: ApplicationResult | null;
+  error?: string | null;
+}
+
+export interface RouteMetrics {
+  amount?: number;
+  reduction?: number;
+  intent?: string;
+  new_pd: number;
+  new_band: Band;
+  confidence: string;
+}
+
+export interface BlueprintRoute {
+  id: string;
+  kind: string;
+  headline: string;
+  detail: string;
+  metrics: RouteMetrics;
+}
+
+export interface DualTargetOption {
+  change: string;
+  new_band: Band;
+  confidence: string;
+  within_control: boolean;
+}
+
+export interface Blueprint {
+  status: string;
+  current_band: Band;
+  current_pd: number;
+  target_band: Band;
+  pd_to_approve_threshold?: number;
+  routes: BlueprintRoute[];
+  dual_target: { headline: string; options: DualTargetOption[]; note: string } | null;
+  summary: string;
+  disclaimer?: string;
+  counterfactuals?: CounterfactualScenario[];
+}
+
+export interface ReasonCode {
+  code: string;
+  title: string;
+  factor: string;
+  detail: string;
+  direction: "increases" | "reduces";
+  reason: string;
+}
+
+export interface Narrative {
+  headline: string;
+  tone: string;
+  reason_codes: ReasonCode[];
+  positive_factors: string[];
+  next_steps: string[];
+  encouragement: string;
+  protected_factors_excluded: string[];
+  notice: string;
+  guardrail: {
+    provider: string;
+    checked: boolean;
+    violations: string[];
+    passed: boolean;
+    protected_excluded: string[];
+    max_reasons: number;
+  };
+}
+
+export interface ScoringBlock {
+  model_version: string;
+  probability_of_default: number;
+  thresholds: Thresholds;
+  band: Band;
+  band_label: BandLabel;
+  final_band: Band;
+  final_band_label: BandLabel;
+  mitigation: {
+    requested: boolean;
+    applied: boolean;
+    changed_band: boolean;
+    attribute: string | null;
+    method: string;
+  };
+  group: string;
+  context: MacroContext;
+  macro_tilt: Record<string, unknown>;
+}
+
+export interface ApplicationResult {
+  scoring: ScoringBlock;
+  reasons: ReasonItem[];
+  narrative: Narrative;
+  blueprint: Blueprint;
+  cache?: Record<string, unknown>;
+}
+
+export interface MacroContext {
+  region: string;
+  region_label: string;
+  as_of: string;
+  month: string;
+  prime_rate: number;
+  unemployment_rate: number;
+  cpi_yoy: number;
+  delinquency_rate: number;
+  cycle_tilt: number;
+  source: string;
+  note: string;
+}
+
+export interface GuardrailResult {
+  disparate_impact_floor: number;
+  passed: boolean;
+  n_breaches: number;
+  breaches: {
+    attribute: string;
+    label: string;
+    lowest_group: string;
+    lowest_selection_rate: number | null;
+  }[];
+}
+
+export interface SimulationResult {
+  n: number;
+  approve_max_pd: number;
+  decline_min_pd: number;
+  apply_fairness: boolean;
+  approval_rate: number;
+  band_counts: Record<string, number>;
+  band_shares: Record<string, number>;
+  expected_cost_per_loan: number;
+  realized_cost_per_loan: number;
+  profit_per_loan: number;
+  profit_total: number;
+  disparate_impact_ratio: number | null;
+  equalized_odds_difference: number | null;
+  fairness_table: {
+    group: string;
+    n: number;
+    selection_rate: number;
+    tpr: number | null;
+    fpr: number | null;
+    mean_exposure: number;
+    low_sample: boolean;
+  }[];
+  group_attribute: string;
+  guardrail: GuardrailResult;
+  mitigation_note?: string | null;
+  sweep?: {
+    points: {
+      approve_max_pd: number;
+      approval_rate: number;
+      expected_cost_per_loan: number;
+      profit_per_loan: number;
+      disparate_impact_ratio: number | null;
+      guardrail_passed: boolean;
+    }[];
+  };
+  context?: MacroContext;
+  intercept?: { save_policy_allowed: boolean; reason: string; floor: number };
+}
+
+export interface AbCompareResult {
+  alpha: SimulationResult;
+  beta: SimulationResult;
+  delta: Record<string, number | null>;
+  labels?: { alpha: string; beta: string };
+}
+
+export interface MitigationAttribute {
+  id: string;
+  label: string;
+  impact?: {
+    disparate_impact_ratio_base?: number;
+  } & Record<string, number | string | null>;
+}
+
+export interface MitigationInfo {
+  options: { id: string; label: string; attribute?: string; description?: string }[];
+  attributes: MitigationAttribute[];
+  default_attribute: string;
+  variant_summaries: Record<
+    string,
+    {
+      label: string;
+      summary?: Record<string, unknown>;
+      impact?: Record<string, number | string | null>;
+    }
+  >;
+  disparate_impact_floor: number;
+}
+
+export interface RegistryModel {
+  version: string;
+  label: string;
+  role: string;
+  artifact: string;
+  metadata: string;
+  trained_at?: string;
+  metrics?: Record<string, number | null>;
+  thresholds?: Thresholds;
+  fairness?: {
+    guardrail_passed?: boolean;
+    n_breaches?: number;
+    disparate_impact_ratio?: number | null;
+    equalized_odds_difference?: number | null;
+    attribute?: string;
+  };
+  mitigation?: Record<string, unknown>;
+}
+
+export interface ModelsResponse {
+  registry: {
+    default: string;
+    fair: string;
+    group_attribute: string;
+    disparate_impact_floor: number;
+    mitigation_attributes: MitigationAttribute[];
+    n_models: number;
+    generated_at?: string;
+  };
+  models: RegistryModel[];
+  lineage: {
+    version: string;
+    role: string;
+    parent?: string;
+    trained_at?: string;
+    note?: string;
+  }[];
+  mitigation_attributes: MitigationAttribute[];
+  variant_summaries: Record<
+    string,
+    {
+      label: string;
+      summary?: Record<string, unknown>;
+      impact?: Record<string, number | string | null>;
+    }
+  >;
+}
+
+export interface DriftResult {
+  available: boolean;
+  enough_data?: boolean;
+  n?: number;
+  window?: string;
+  simulated?: boolean;
+  alert: boolean;
+  severity?: string;
+  max_psi?: number;
+  max_ks?: number | null;
+  features?: Record<
+    string,
+    { type: string; psi: number; psi_verdict?: string; ks?: number | null; ks_verdict?: string }
+  >;
+  alerts?: { feature: string; statistic: string; value: number }[];
+  adversarial_validation?: { proxy_auc: number; note: string };
+  thresholds?: Record<string, number>;
+  note?: string;
+  storage_enabled?: boolean;
+}
+
+export interface BiasInjectResult {
+  injection: { group: string; factor: number; note: string };
+  clean: { disparate_impact_ratio: number | null; guardrail_passed: boolean };
+  biased: {
+    disparate_impact_ratio: number | null;
+    equalized_odds_difference: number | null;
+    guardrail: GuardrailResult;
+    fairness_table: SimulationResult["fairness_table"];
+  };
+  recovered: {
+    disparate_impact_ratio: number | null;
+    equalized_odds_difference: number | null;
+    guardrail: GuardrailResult;
+    fairness_table: SimulationResult["fairness_table"];
+  };
 }

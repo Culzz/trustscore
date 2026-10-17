@@ -1,0 +1,12 @@
+# Optional asynchronous workers for the hybrid deployment (Docker / Render).
+#
+# Install ONLY when you want the Celery path:
+#
+#     pip install -r requirements-async.txt
+#     JOB_BACKEND=celery CELERY_BROKER_URL=redis://localhost:6379/0 \
+#         celery -A app.worker:celery_app worker --loglevel=info
+#
+# Vercel never installs these; the API falls back to in-process jobs.
+-r requirements.txt
+celery>=5.4,<6
+redis>=5.0,<6

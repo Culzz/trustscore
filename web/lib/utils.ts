@@ -44,3 +44,14 @@ export const BAND_LABEL_TEXT: Record<BandLabel, string> = {
   medium: "Medium risk",
   high: "High risk",
 };
+
+export const BAND_TO_BAND_LABEL: Record<Band, BandLabel> = {
+  approve: "low",
+  refer: "medium",
+  decline: "high",
+};
+
+/** Human-readable risk wording for a band, when only the band is known. */
+export function bandText(band: Band): string {
+  return BAND_LABEL_TEXT[BAND_TO_BAND_LABEL[band]];
+}

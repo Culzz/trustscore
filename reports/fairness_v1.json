@@ -1,13 +1,23 @@
 {
   "model_version": "trustscore-1.0.0",
   "min_group_size": 30,
+  "disparate_impact_floor": 0.8,
   "definitions": {
     "positive_prediction": "approved (decision band = approve)",
     "favourable_outcome": "repaid (loan_status == 0)",
     "selection_rate": "share of group approved",
     "tpr": "P(approved | repaid)",
     "fpr": "P(approved | defaulted)",
-    "precision": "P(repaid | approved)"
+    "precision": "P(repaid | approved)",
+    "disparate_impact_ratio": "min/max selection rate across adequately-sized groups; the 'four-fifths rule' flags a ratio below 0.80",
+    "equalized_odds_difference": "max(TPR gap, FPR gap) across adequately-sized groups"
+  },
+  "overall": {
+    "n": 6484,
+    "selection_rate": 0.4528069093152375,
+    "tpr": 0.5704697986577181,
+    "fpr": 0.03244005641748942,
+    "default_rate": 0.21869216533004318
   },
   "attributes": {
     "person_home_ownership": {
@@ -56,8 +66,13 @@
       ],
       "summary": {
         "selection_rate_ratio": 0.3750082718149078,
+        "disparate_impact_ratio": 0.3750082718149078,
+        "disparate_impact_pass": false,
         "demographic_parity_difference": 0.5565342163757718,
         "equal_opportunity_difference": 0.48890733199700565,
+        "equalized_odds_difference": 0.48890733199700565,
+        "tpr_range": 0.48890733199700565,
+        "fpr_range": 0.09253731343283582,
         "n_groups_considered": 3
       }
     },
@@ -137,8 +152,13 @@
       ],
       "summary": {
         "selection_rate_ratio": 0.8438543361675473,
+        "disparate_impact_ratio": 0.8438543361675473,
+        "disparate_impact_pass": true,
         "demographic_parity_difference": 0.0805823157992479,
         "equal_opportunity_difference": 0.09501021964117706,
+        "equalized_odds_difference": 0.09501021964117706,
+        "tpr_range": 0.09501021964117706,
+        "fpr_range": 0.05263157894736842,
         "n_groups_considered": 4
       }
     },
@@ -188,8 +208,13 @@
       ],
       "summary": {
         "selection_rate_ratio": 0.3796567154210913,
+        "disparate_impact_ratio": 0.3796567154210913,
+        "disparate_impact_pass": false,
         "demographic_parity_difference": 0.4270139099597631,
         "equal_opportunity_difference": 0.32856930509104415,
+        "equalized_odds_difference": 0.32856930509104415,
+        "tpr_range": 0.32856930509104415,
+        "fpr_range": 0.2133502323616392,
         "n_groups_considered": 4
       }
     },
@@ -259,8 +284,13 @@
       ],
       "summary": {
         "selection_rate_ratio": 0.545690519733349,
+        "disparate_impact_ratio": 0.545690519733349,
+        "disparate_impact_pass": false,
         "demographic_parity_difference": 0.30438735177865617,
         "equal_opportunity_difference": 0.30146286834184927,
+        "equalized_odds_difference": 0.30146286834184927,
+        "tpr_range": 0.30146286834184927,
+        "fpr_range": 0.06004256749187858,
         "n_groups_considered": 6
       }
     },
@@ -290,8 +320,13 @@
       ],
       "summary": {
         "selection_rate_ratio": 0.2698363195790297,
+        "disparate_impact_ratio": 0.2698363195790297,
+        "disparate_impact_pass": false,
         "demographic_parity_difference": 0.3805967886662147,
         "equal_opportunity_difference": 0.4114170419973151,
+        "equalized_odds_difference": 0.4114170419973151,
+        "tpr_range": 0.4114170419973151,
+        "fpr_range": 0.027336215960283808,
         "n_groups_considered": 2
       }
     }
@@ -303,5 +338,45 @@
     "marital status",
     "disability status"
   ],
-  "disclaimer": "This dashboard reports statistical disparities between groups. It does not establish legal compliance or non-compliance, and it is not a legal opinion."
+  "disclaimer": "This dashboard reports statistical disparities between groups. It does not establish legal compliance or non-compliance, and it is not a legal opinion.",
+  "guardrail": {
+    "disparate_impact_floor": 0.8,
+    "passed": false,
+    "n_breaches": 4,
+    "breaches": [
+      {
+        "attribute": "person_home_ownership",
+        "label": "Home ownership",
+        "disparate_impact_ratio": 0.3750082718149078,
+        "floor": 0.8,
+        "lowest_group": "RENT",
+        "lowest_selection_rate": 0.33393231506439053
+      },
+      {
+        "attribute": "income_band",
+        "label": "Income band",
+        "disparate_impact_ratio": 0.3796567154210913,
+        "floor": 0.8,
+        "lowest_group": "low",
+        "lowest_selection_rate": 0.2613370733987845
+      },
+      {
+        "attribute": "loan_intent",
+        "label": "Loan purpose",
+        "disparate_impact_ratio": 0.545690519733349,
+        "floor": 0.8,
+        "lowest_group": "DEBTCONSOLIDATION",
+        "lowest_selection_rate": 0.36561264822134387
+      },
+      {
+        "attribute": "cb_person_default_on_file",
+        "label": "Prior default on file",
+        "disparate_impact_ratio": 0.2698363195790297,
+        "floor": 0.8,
+        "lowest_group": "Y",
+        "lowest_selection_rate": 0.14065180102915953
+      }
+    ],
+    "mitigation_attribute": "age_band"
+  }
 }

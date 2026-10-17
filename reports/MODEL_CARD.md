@@ -1,6 +1,6 @@
 # Model Card — TrustScore (`trustscore-1.0.0`)
 
-_Generated 2026-10-16T16:52:11.040228+00:00 by `python -m training.src.train`._
+_Generated 2026-10-17T13:32:53.601837+00:00 by `python -m training.src.train`._
 
 > TrustScore is a demonstration of responsible-AI credit decisioning. It is not a real lending tool, not financial advice, and not a loan offer. Decisions shown are simulated.
 
@@ -77,6 +77,8 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Selection-rate ratio (min/max): **0.3750**
 - Demographic parity difference: 0.5565
 - Equal opportunity difference (TPR gap): 0.4889
+- Equalized odds difference (max TPR/FPR gap): 0.4889
+- Disparate-impact ratio (four-fifths rule): **0.3750** [BREACH vs floor 0.8000]
 
 ### Age band
 
@@ -93,6 +95,8 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Selection-rate ratio (min/max): **0.8439**
 - Demographic parity difference: 0.0806
 - Equal opportunity difference (TPR gap): 0.0950
+- Equalized odds difference (max TPR/FPR gap): 0.0950
+- Disparate-impact ratio (four-fifths rule): **0.8439** [PASS vs floor 0.8000]
 
 ### Income band
 
@@ -106,6 +110,8 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Selection-rate ratio (min/max): **0.3797**
 - Demographic parity difference: 0.4270
 - Equal opportunity difference (TPR gap): 0.3286
+- Equalized odds difference (max TPR/FPR gap): 0.3286
+- Disparate-impact ratio (four-fifths rule): **0.3797** [BREACH vs floor 0.8000]
 
 ### Loan purpose
 
@@ -121,6 +127,8 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Selection-rate ratio (min/max): **0.5457**
 - Demographic parity difference: 0.3044
 - Equal opportunity difference (TPR gap): 0.3015
+- Equalized odds difference (max TPR/FPR gap): 0.3015
+- Disparate-impact ratio (four-fifths rule): **0.5457** [BREACH vs floor 0.8000]
 
 ### Prior default on file
 
@@ -132,8 +140,31 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Selection-rate ratio (min/max): **0.2698**
 - Demographic parity difference: 0.3806
 - Equal opportunity difference (TPR gap): 0.4114
+- Equalized odds difference (max TPR/FPR gap): 0.4114
+- Disparate-impact ratio (four-fifths rule): **0.2698** [BREACH vs floor 0.8000]
 
 **Not available in this dataset (reported honestly, not estimated):** gender, race/ethnicity, geography/region, marital status, disability status.
+
+### Guardrail
+
+- Disparate-impact floor: **0.8000**
+- Status: **BREACH** (4 attribute(s) below the floor)
+
+## Fairness mitigation (equalized odds)
+
+The fairness-tuned model (**Beta**, `trustscore-1.1.0`) keeps the same booster and appends a *post-processing* rule: per-group randomised probability thresholds that equalise the true-positive and false-positive rates across age bands.
+
+- Method: **equalized_odds**
+- Attribute: `loan_intent`
+- Target TPR / FPR: 0.5846 / 0.0310
+- Base approve threshold: 0.0553
+
+| Metric | Baseline | After mitigation |
+| --- | --- | --- |
+| Approval rate | 0.453 | 0.457 |
+| Realized cost per loan | 0.0264 | 0.0276 |
+| Disparate-impact ratio | 0.5457 | 0.8427 |
+| Equalized odds difference | 0.3015 | 0.0664 |
 
 ## Most influential features
 
@@ -172,5 +203,5 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 
 - Model version: **trustscore-1.0.0**
 - Fixed random seed: 42
-- Artifacts: `api/artifacts/model.joblib`, `api/artifacts/metadata.json`
-- Reports: `reports/metrics_v1.json`, `reports/fairness_v1.json`, `reports/calibration_v1.json`
+- Artifacts: `api/artifacts/model.joblib`, `api/artifacts/metadata.json`, `api/artifacts/model_fair.joblib`, `api/artifacts/registry.json`
+- Reports: `reports/metrics_v1.json`, `reports/fairness_v1.json`, `reports/fairness_v110.json`, `reports/calibration_v1.json`

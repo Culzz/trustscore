@@ -3,6 +3,12 @@
 #
 # Render's free Postgres expires after 90 days; for a permanent free database
 # use Supabase or Aiven and paste the connection string into DATABASE_URL.
+#
+# Application jobs run in-process here (JOB_BACKEND=auto with no broker), which
+# is exactly right for a single free instance: the WebSocket progress stream
+# works because the process stays alive. To run the real Celery path, deploy
+# this same image with a Redis instance and set CELERY_BROKER_URL -- Redis Cloud
+# has a free tier. (Render's free plan has no background workers.)
 services:
   - type: web
     name: trustscore-api
@@ -20,5 +26,19 @@ services:
         value: "true"
       - key: CORS_ORIGINS
         value: "*"
+      - key: MODEL_VERSION
+        value: trustscore-1.0.0
+      - key: FAIR_MODEL_VERSION
+        value: trustscore-1.1.0
+      - key: JOB_BACKEND
+        value: auto
+      - key: PII_SALT
+        generateValue: true
       - key: DATABASE_URL
+        sync: false
+      # Optional: a Slack-style incoming webhook for drift/adversarial alerts.
+      - key: ALERT_WEBHOOK_URL
+        sync: false
+      # Optional: set to a Redis URL to switch jobs to a real Celery worker.
+      - key: CELERY_BROKER_URL
         sync: false

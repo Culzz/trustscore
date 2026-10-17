@@ -1,10 +1,10 @@
-"""Scoring endpoints: /predict, /explain, /decision, /counterfactual."""
+"""Scoring endpoints: /predict, /explain, /decision, /counterfactual, /blueprint."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 
 from .. import db
 from ..core.config import get_settings
@@ -14,6 +14,7 @@ from ..limiter import limiter
 from ..schemas import (
     DISCLAIMER,
     Applicant,
+    ApplyRequest,
     CounterfactualResponse,
     CounterfactualScenario,
     DecisionRequest,
@@ -24,18 +25,14 @@ from ..schemas import (
     Thresholds,
 )
 from ..services import decision as policy
+from ..services.blueprint import build_blueprint
 from ..services.counterfactual import find_counterfactuals
+from ..services.drift_monitor import bins_for_row
+from ..services.narrative import REASON_CODES
+from ..services.pipeline import base_thresholds, score_row
 from ..services.reasons import top_reasons
 
 router = APIRouter(tags=["scoring"])
-
-
-def _thresholds(pred) -> tuple[float, float]:
-    thr = pred.thresholds or {}
-    return (
-        float(thr.get("approve_max_pd", 0.10)),
-        float(thr.get("decline_min_pd", 0.50)),
-    )
 
 
 def _enrich_row(applicant: Applicant) -> dict:
@@ -48,31 +45,44 @@ def _enrich_row(applicant: Applicant) -> dict:
     return row
 
 
+def _reason_code(factor: str) -> str | None:
+    entry = REASON_CODES.get(factor)
+    return entry["code"] if entry else None
+
+
 @router.post("/predict", response_model=PredictResponse)
 @limiter.limit(get_settings().rate_limit)
-def predict(request: Request, applicant: Applicant) -> PredictResponse:
+def predict(
+    request: Request, applicant: Applicant, model: str | None = Query(default=None)
+) -> PredictResponse:
     """Calibrated probability of default, band, model version and prediction id."""
-    pred = get_predictor()
-    pd_value = pred.predict_proba(applicant.as_model_row())
-    approve_max, decline_min = _thresholds(pred)
-    band = policy.decide(pd_value, approve_max, decline_min)
+    scored = score_row(applicant.as_model_row(), model_version=model)
+    pd_value = scored["probability_of_default"]
+    approve_max = scored["thresholds"]["approve_max_pd"]
+    decline_min = scored["thresholds"]["decline_min_pd"]
+    band = scored["band"]
 
     prediction_id = str(uuid4())
     created_at = datetime.now(timezone.utc).isoformat()
     db.log_prediction(
         prediction_id=prediction_id,
-        model_version=pred.version,
+        model_version=scored["model_version"],
         probability_of_default=pd_value,
         band=band,
         decision=band,
         exposure=applicant.loan_amnt,
     )
+    try:
+        db.log_prediction_features(prediction_id, bins_for_row(applicant.as_model_row()))
+    except Exception:  # pragma: no cover - logging must never break scoring
+        pass
+
     return PredictResponse(
         prediction_id=prediction_id,
-        model_version=pred.version,
+        model_version=scored["model_version"],
         probability_of_default=pd_value,
         band=band,
-        band_label=policy.band_label(band),
+        band_label=scored["band_label"],
         thresholds=Thresholds(approve_max_pd=approve_max, decline_min_pd=decline_min),
         created_at=created_at,
     )
@@ -80,15 +90,19 @@ def predict(request: Request, applicant: Applicant) -> PredictResponse:
 
 @router.post("/explain", response_model=ExplainResponse)
 @limiter.limit(get_settings().rate_limit)
-def explain(request: Request, applicant: Applicant) -> ExplainResponse:
+def explain(
+    request: Request, applicant: Applicant, model: str | None = Query(default=None)
+) -> ExplainResponse:
     """The strongest plain-language reasons for this applicant's estimate."""
-    pred = get_predictor()
+    pred = get_predictor(model)
     row = _enrich_row(applicant)
     pd_value = pred.predict_proba(applicant.as_model_row())
     contribs, names = pred.contributions(applicant.as_model_row())
     reasons = top_reasons(contribs, names, row, k=5)
+    for reason in reasons:
+        reason["code"] = _reason_code(reason.get("factor", ""))
 
-    approve_max, decline_min = _thresholds(pred)
+    approve_max, decline_min = base_thresholds(pred)
     band = policy.decide(pd_value, approve_max, decline_min)
     return ExplainResponse(
         model_version=pred.version,
@@ -102,20 +116,24 @@ def explain(request: Request, applicant: Applicant) -> ExplainResponse:
 @limiter.limit(get_settings().rate_limit)
 def decision(request: Request, payload: DecisionRequest) -> DecisionResponse:
     """Apply the (optionally overridden) cost-based policy to one applicant."""
-    pred = get_predictor()
-    applicant = payload.applicant
-    pd_value = pred.predict_proba(applicant.as_model_row())
+    scored = score_row(
+        payload.applicant.as_model_row(),
+        model_version=payload.model,
+        apply_fairness=payload.apply_fairness,
+        region=payload.region,
+        use_macro_tilt=payload.use_macro_tilt,
+        approve_max_pd=payload.approve_max_pd,
+        decline_min_pd=payload.decline_min_pd,
+        mitigation_attribute=payload.mitigation_attribute,
+    )
+    pd_value = scored["probability_of_default"]
+    band = scored["final_band"]
+    approve_max = scored["thresholds"]["approve_max_pd"]
+    decline_min = scored["thresholds"]["decline_min_pd"]
 
-    default_approve, default_decline = _thresholds(pred)
-    approve_max = payload.approve_max_pd if payload.approve_max_pd is not None else default_approve
-    decline_min = payload.decline_min_pd if payload.decline_min_pd is not None else default_decline
-    if decline_min <= approve_max:
-        # Keep the bands sane if a caller passes crossing thresholds.
-        decline_min = min(0.99, approve_max + 0.01)
-
-    band = policy.decide(pd_value, approve_max, decline_min)
+    pred = get_predictor(payload.model)
     costs = policy.CostMatrix.from_dict(pred.cost_matrix or {})
-    exposure = float(applicant.loan_amnt)
+    exposure = float(payload.applicant.loan_amnt)
     if band == policy.APPROVE:
         expected = costs.false_approve * pd_value * exposure
     elif band == policy.DECLINE:
@@ -131,18 +149,20 @@ def decision(request: Request, payload: DecisionRequest) -> DecisionResponse:
         thresholds=Thresholds(approve_max_pd=approve_max, decline_min_pd=decline_min),
         cost_matrix=costs.as_dict(),
         expected_cost=float(expected),
-        model_version=pred.version,
+        model_version=scored["model_version"],
     )
 
 
 @router.post("/counterfactual", response_model=CounterfactualResponse)
 @limiter.limit(get_settings().rate_limit)
-def counterfactual(request: Request, applicant: Applicant) -> CounterfactualResponse:
+def counterfactual(
+    request: Request, applicant: Applicant, model: str | None = Query(default=None)
+) -> CounterfactualResponse:
     """Feasible changes that could move this applicant to a better band."""
-    pred = get_predictor()
+    pred = get_predictor(model)
     row = applicant.as_model_row()
     pd_value = pred.predict_proba(row)
-    approve_max, decline_min = _thresholds(pred)
+    approve_max, decline_min = base_thresholds(pred)
     current_band = policy.decide(pd_value, approve_max, decline_min)
     target_band = (
         policy.REFER if current_band == policy.DECLINE else policy.APPROVE
@@ -177,3 +197,29 @@ def counterfactual(request: Request, applicant: Applicant) -> CounterfactualResp
         ],
         disclaimer=DISCLAIMER,
     )
+
+
+@router.post("/blueprint")
+@limiter.limit(get_settings().rate_limit)
+def blueprint(request: Request, payload: ApplyRequest) -> dict:
+    """The dual-target "How to get approved" roadmap for one applicant."""
+    scored = score_row(
+        payload.applicant.as_model_row(),
+        model_version=payload.model,
+        apply_fairness=payload.apply_fairness,
+        region=payload.region,
+        use_macro_tilt=payload.use_macro_tilt,
+        mitigation_attribute=payload.mitigation_attribute,
+    )
+    pred = get_predictor(payload.model)
+    row = _enrich_row(payload.applicant)
+    plan = build_blueprint(
+        raw_row=row,
+        predict_fn=pred.predict_proba,
+        approve_max_pd=scored["thresholds"]["approve_max_pd"],
+        decline_min_pd=scored["thresholds"]["decline_min_pd"],
+        current_pd=scored["probability_of_default"],
+        loan_intent_options=CATEGORY_OPTIONS["loan_intent"],
+    )
+    plan["scoring"] = scored
+    return plan

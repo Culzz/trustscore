@@ -49,8 +49,12 @@ class Predictor:
         self._calib_y = np.asarray(calib.get("y", [0.0, 1.0]), dtype=float)
         self.feature_names: list[str] = list(artifact["feature_names"])
         self.version: str = artifact.get("version", "unknown")
+        self.base_version: str | None = artifact.get("base_version")
         self.thresholds: dict = artifact.get("thresholds", {})
         self.cost_matrix: dict = artifact.get("cost_matrix", {})
+        # Equalized-odds post-processing (present only on the fairness-tuned
+        # model); None means "no mitigation".
+        self.mitigation: dict | None = artifact.get("mitigation") or None
 
     # -- internals ---------------------------------------------------------
     def _transform(self, rows: list[dict]) -> np.ndarray:
@@ -82,21 +86,43 @@ class Predictor:
         return contribs[:-1], self.feature_names
 
 
-def load_metadata() -> dict:
-    path = get_settings().metadata_path
+    # -- mitigation --------------------------------------------------------
+    @property
+    def mitigation_params(self) -> dict | None:
+        """The fitted equalized-odds parameters, if this model carries them."""
+        if not self.mitigation:
+            return None
+        return self.mitigation.get("params")
+
+
+def load_metadata(version: str | None = None) -> dict:
+    settings = get_settings()
+    path = settings.metadata_path
+    if version and version == settings.fair_model_version:
+        path = settings.fair_metadata_path
     if not path.exists():
         return {}
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-@lru_cache(maxsize=1)
-def get_predictor() -> Predictor:
-    """Load the artifact once per process. Raises a clear error if missing."""
+def artifact_path_for(version: str | None = None):
     settings = get_settings()
-    path = settings.model_artifact_path
+    if version and version == settings.fair_model_version:
+        return settings.fair_model_artifact_path
+    return settings.model_artifact_path
+
+
+@lru_cache(maxsize=4)
+def _load_predictor(version: str | None) -> Predictor:
+    path = artifact_path_for(version)
     if not path.exists():
         raise FileNotFoundError(
             f"Model artifact not found at {path}. Run "
             "'python -m training.src.train' first."
         )
     return Predictor(joblib.load(path))
+
+
+def get_predictor(version: str | None = None) -> Predictor:
+    """Load (and cache) the predictor for a version; None means the default."""
+    return _load_predictor(version)

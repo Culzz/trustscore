@@ -45,16 +45,28 @@ All figures are generated from the committed reports by `python scripts/figures.
 
 ![Fairness audit](docs/figures/fairness.png)
 
-## Two views
+## Three views, two personas
 
-* **Applicant view** (`/`) — a validated form (or one-click sample applicants),
-  a risk gauge with the estimated band, top-5 plain-language reasons, a live
-  what-if slider on the requested amount, and feasible counterfactual scenarios.
-  No jargon, no raw scores.
-* **Lender / auditor view** (`/lender`) — portfolio stats, live counters,
-  the calibration curve, the score distribution, a fairness explorer, an
-  input-drift (PSI) panel, and a decision-policy simulator that changes the
-  thresholds and recomputes the band mix and expected cost.
+A single global toggle in the header swaps the whole platform between a light,
+plain-language **applicant** experience and a dark, high-density **auditor**
+terminal. A persistent *SIMULATION ENVIRONMENT* watermark and banner stay on
+every screen.
+
+* **Applicant view** (`/`) — application form (or one-click samples) and an
+  **asynchronous** decision job whose milestones stream in live (validated →
+  scored → explained → recourse → ready). You get the risk **band first**, with
+  the exact probability behind a deliberate "show me the numbers" step; a
+  guardrailed **ECOA-style notice** with reason codes; a **"How to get approved"
+  roadmap** of independent, applicant-controllable routes with dual-target
+  framing; and a **split-pane what-if sandbox** that re-scores both sides against
+  the live policy on a debounce.
+* **Auditor view** (`/auditor`) — a **policy cutoff simulator** with a
+  profitability model and a **disparate-impact guardrail** that disables *Save
+  policy* while any attribute breaches the four-fifths floor; a fairness
+  mitigation toggle (equalized odds, per attribute); an **Alpha vs Beta model
+  grid**; a **bias injector**; **live drift and adversarial alerting** with a
+  test alert; the full fairness audit, calibration and score distribution; a
+  **model-version lineage timeline**; and a **one-click compliance PDF**.
 * **Model Card** (`/model-card`) — intended use, data, performance, calibration,
   policy, influential features, fairness, and limitations, rendered live from
   `/model`.
@@ -87,8 +99,8 @@ Details in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ```
 trustscore/
-  web/        Next.js (React + TypeScript + Tailwind + Recharts) — two views
-  api/        FastAPI service + the bundled, versioned model artifact
+  web/        Next.js (React + TypeScript + Tailwind + Recharts) — persona shell
+  api/        FastAPI service + the bundled, versioned model artifacts
   training/   offline pipeline: clean -> train -> calibrate -> explain -> audit
   reports/    fairness, calibration, metrics, drift JSON + MODEL_CARD.md
   docs/       architecture, API, deployment
@@ -131,19 +143,94 @@ python -m training.src.train
 | Method | Path | Purpose |
 | --- | --- | --- |
 | POST | `/predict` | Calibrated PD, band, model version, prediction ID |
-| POST | `/explain` | Top plain-language reasons |
+| POST | `/explain` | Top plain-language reasons (with ECOA-style codes) |
 | POST | `/decision` | Cost-based policy → approve / refer / decline (simulated) |
 | POST | `/counterfactual` | Feasible changes to a better band |
+| POST | `/blueprint` | Contrastive "how to get approved" roadmap (dual-target) |
+| POST | `/apply` | **Async** decision job → `202` + `job_id` |
+| GET | `/jobs/{id}` | Job status, streamed milestones and the final result |
+| WS | `/ws/jobs/{id}` | Live milestone stream (polling is the fallback) |
 | GET | `/model` | Model-card data: metrics, calibration, thresholds, fairness, drift |
-| GET | `/health` | Service status |
-| GET | `/stats` | Live anonymised counters |
+| GET | `/models` | Registry: versions, lineage, mitigation variants |
+| GET | `/models/{version}` | Model card for one specific version |
+| GET | `/registry` | Raw registry (group definitions, mitigation params) |
+| GET | `/mitigation` | Equalized-odds variants and their measured impact |
+| GET | `/context` | Macro feature-store context for a region |
+| GET | `/portfolio` | The public portfolio (full test split) used by the auditors' tools |
+| POST | `/policy/simulate` | Cut-offs → approval rate, cost, profit, fairness, sweep |
+| POST | `/ab/compare` | Alpha vs Beta on the same portfolio at the same policy |
+| POST | `/bias/inject` | Adversarially skew a group and test the controls |
+| GET | `/drift/live` | PSI/KS live drift + adversarial-validation proxy |
+| POST | `/alerts/test` | Generate (and optionally deliver) a drift alert |
+| GET | `/report.pdf` | Compliance Alignment & Fair Lending PDF |
+| GET | `/cache/stats` | Explainer-cache hit/miss counters |
+| GET | `/health`, `/stats` | Service status, live anonymised counters |
 
 Full contract in [`docs/API.md`](docs/API.md).
+
+## Advanced capabilities
+
+* **Dual-persona shell** — one persisted toggle drives the light applicant UI and
+  the dark auditor console, with a permanent simulation watermark and CTA copy.
+* **Async explainability** — `/apply` returns a job immediately; milestones
+  (validated → scored → explained → recourse → ready) are pushed over a
+  **WebSocket** or replayed by polling `GET /jobs/{id}` where sockets are not
+  available. Counterfactual/blueprint results are **cached** by feature hash.
+* **Fairness mitigation** — an **equalized-odds post-processor** is fitted on the
+  validation split for every derivable attribute (`age_band`,
+  `person_home_ownership`, `loan_intent`, `income_band`). The default variant is
+  chosen by fewest guardrail breaches, then largest disparate-impact gain. The
+  console exposes the **attribute under audit**, so mitigation can be retargeted
+  and its effect measured on the spot.
+* **A/B models** — **Alpha** (`trustscore-1.0.0`, raw) and **Beta**
+  (`trustscore-1.1.0`, fairness-tuned) are separate artifacts scored side by side
+  on the same portfolio at the same policy, so the cost *and* the benefit of
+  mitigation are both visible.
+* **Reproducible audit numbers** — the auditors' tools run on the full public test
+  split with calibrated scores stored verbatim, and reuse the training tie-break
+  keys, so the live disparate-impact ratio and equalized-odds gap **match the
+  model card exactly** rather than drifting with sampling or rounding.
+* **Guardrailed narration** — reason codes are produced from deterministic
+  templates, not a free-form LLM: protected characteristics are withheld and the
+  text passes a denylist + length guardrail. The check is reported in the UI.
+* **Policy guardrail intercept** — when the **attribute under audit** breaches the
+  four-fifths floor the simulator flashes and **disables *Save policy***, with the
+  breaching group named; turning on mitigation clears it.
+* **Drift & adversarial alerting** — PSI (and KS where a reference sample
+  exists) compares recent traffic with the training reference; an
+  adversarial-validation proxy detects covariate shift. Alerts can be POSTed to
+  `ALERT_WEBHOOK_URL`.
+* **Privacy gateway** — pure-ASGI middleware drops direct identifiers from JSON
+  request bodies before handlers see them (salted digests are kept in request
+  state only, for counting) and echoes the redaction count in
+  `x-pii-redactions`. Drift logging stores **bin indices and category codes
+  only**, never raw feature values.
+* **Model lineage & model card** — an internal `registry.json` records parents,
+  timestamps and the measured effect of each change (no MLflow dependency), and
+  the model card is exported automatically by the training pipeline.
+* **Compliance PDF** — generated server-side with **ReportLab**, which draws its
+  own reliability curve, so matplotlib stays out of the runtime bundle.
+
+## Async jobs: light by default, real workers on demand
+
+`JOB_BACKEND=auto` resolves to **celery** when `CELERY_BROKER_URL` or `REDIS_URL`
+is set, and to **in-process** otherwise. The Vercel/serverless default is
+in-process (no broker, no external service); the client transparently falls back
+to polling. To run the real worker path:
+
+```bash
+docker compose --profile async up --build
+# or: REDIS_URL=redis://redis:6379/0 docker compose --profile async up
+```
+
+The Celery worker runs `app.worker.celery_app`; `pip install -r
+api/requirements-async.txt` installs it alongside the base requirements.
 
 ## Fairness
 
 Audited on the held-out test split. **Statistical disparities exist**, and the
-dashboard reports them rather than hiding them:
+platform reports them rather than hiding them. Every audited attribute starts
+below the four-fifths (0.80) floor except age band:
 
 | Attribute | Selection-rate ratio | Demographic-parity gap | Equal-opportunity gap |
 | --- | --- | --- | --- |
@@ -152,6 +239,26 @@ dashboard reports them rather than hiding them:
 | Income band | 0.380 | 0.427 | 0.329 |
 | Loan purpose | 0.546 | 0.304 | 0.301 |
 | Prior default on file | 0.270 | 0.381 | 0.411 |
+
+### Mitigation, measured
+
+Equalized-odds post-processing is fitted per attribute. The default variant
+(`loan_intent`) is the one that removes the most guardrail breaches:
+
+| Variant | DI ratio | Equalized-odds gap | Guardrail breaches | Realized cost / loan |
+| --- | --- | --- | --- | --- |
+| none (Alpha) | 0.546 | 0.301 | 4 | 0.0264 |
+| **loan_intent (Beta, default)** | **0.843** | **0.066** | **3** | 0.0276 |
+| person_home_ownership | 0.765 | 0.087 | 4 | 0.0275 |
+| income_band | 0.771 | 0.109 | 4 | 0.0280 |
+| age_band | 0.899 | 0.093 | 4 | 0.0276 |
+
+Approval rate moves from 45.28% to 45.68% under the default variant. The honest
+reading: mitigation buys a large fairness improvement for a small cost increase,
+but it does **not** make the model compliant — three guardrail breaches remain,
+because equalized odds targets true/false-positive parity rather than
+selection-rate parity, and it only acts on one attribute at a time. The audit
+console says so on screen.
 
 The dataset has **no gender, race or geography**, so those are reported as *not
 available*, not estimated. These figures are statistical disparities, not a
@@ -174,10 +281,21 @@ Step-by-step in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
   already encode an underwriting judgement, so the headline AUC is optimistic.
 * Fairness is audited only for attributes present in the data; gender, race and
   geography are absent.
-* Counterfactuals are model-generated scenarios, not guaranteed approval
-  conditions.
-* Monitoring is offline/simulated: the public dataset has no live outcome stream.
+* Mitigation removes only some guardrail breaches. Equalized odds equalises
+  true/false-positive rates on **one** attribute; it is not a compliance fix.
+* Counterfactuals and blueprints are model-generated scenarios, not guaranteed
+  approval conditions.
+* **The macro feature store is an honest seeded mock.** Its context is displayed
+  to applicants and can tilt a cut-off, but it is deliberately **not** an input to
+  the model, so scores stay reproducible from the eleven applicant fields alone.
+  The deviation is stated in the UI and in `docs/ARCHITECTURE.md`.
+* Monitoring is offline/simulated when no database is configured: with no live
+  stream the drift panel runs a clearly-labelled synthetic window.
+* Serverless functions cannot hold a WebSocket, so on Vercel the progress stream
+  degrades to polling — same events, different transport.
 * Fairness figures are statistical disparities, not proof of legal compliance.
+* The applicant notice is template-generated and reviewed by rules, **not** by a
+  lawyer; it demonstrates an ECOA-style pattern rather than giving legal advice.
 
 ## Data
 

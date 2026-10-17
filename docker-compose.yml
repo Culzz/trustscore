@@ -1,8 +1,12 @@
 # Local, one-command stack: API on :8000, web on :3000.
 #
-#   docker compose up --build
+#   docker compose up --build                 # light: in-process jobs, SQLite
+#   docker compose --profile async up --build # + Redis and a Celery worker
 #
-# The API logs predictions to a local SQLite file (no cloud account needed).
+# The core stack needs no cloud account: the API logs predictions to a local
+# SQLite file and runs application jobs in-process. The `async` profile adds the
+# real worker path (Celery + Redis) so you can see live WebSocket progress
+# streaming from a separate process.
 services:
   api:
     build:
@@ -15,6 +19,13 @@ services:
       LOG_PREDICTIONS: "true"
       ENABLE_DOCS: "true"
       CORS_ORIGINS: "http://localhost:3000"
+      # Empty by default so the light stack stays in-process. Start the async
+      # profile with the broker set, e.g.
+      #   REDIS_URL=redis://redis:6379/0 docker compose --profile async up
+      JOB_BACKEND: ${JOB_BACKEND:-auto}
+      REDIS_URL: ${REDIS_URL:-}
+      CELERY_BROKER_URL: ${CELERY_BROKER_URL:-}
+      CELERY_RESULT_BACKEND: ${CELERY_RESULT_BACKEND:-}
     volumes:
       - trustscore_data:/data
     healthcheck:
@@ -22,6 +33,36 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["async"]
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  worker:
+    build:
+      context: ./api
+    profiles: ["async"]
+    command: ["celery", "-A", "app.worker.celery_app", "worker", "--loglevel=info", "--concurrency=2"]
+    environment:
+      STORAGE_BACKEND: sqlite
+      SQLITE_PATH: /data/predictions.db
+      LOG_PREDICTIONS: "true"
+      JOB_BACKEND: celery
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+    volumes:
+      - trustscore_data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
 
   web:
     build:

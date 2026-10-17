@@ -103,6 +103,13 @@ CREATE TABLE IF NOT EXISTS predictions (
     exposure               DOUBLE PRECISION
 );
 CREATE INDEX IF NOT EXISTS predictions_created_at_idx ON predictions (created_at);
+CREATE TABLE IF NOT EXISTS prediction_features (
+    prediction_id TEXT PRIMARY KEY,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    features      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS prediction_features_created_at_idx
+    ON prediction_features (created_at);
 """
 
 _SQLITE_DDL = """
@@ -116,6 +123,13 @@ CREATE TABLE IF NOT EXISTS predictions (
     exposure               REAL
 );
 CREATE INDEX IF NOT EXISTS predictions_created_at_idx ON predictions (created_at);
+CREATE TABLE IF NOT EXISTS prediction_features (
+    prediction_id TEXT PRIMARY KEY,
+    created_at    TEXT NOT NULL,
+    features      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS prediction_features_created_at_idx
+    ON prediction_features (created_at);
 """
 
 
@@ -254,6 +268,93 @@ def get_stats(window_days: int = 30) -> dict:
             "window": f"last {window_days} days",
             "note": f"Storage unavailable: {exc}",
         }
+
+
+def log_prediction_features(prediction_id: str, features: dict) -> bool:
+    """Store a privacy-safe, binned feature summary for the live drift monitor.
+
+    Only bin indices and category codes are stored -- never the raw applicant
+    values -- so drift can be measured without retaining personal data.
+    """
+    backend = resolve_backend()
+    if backend == "none" or not features:
+        return False
+    import json
+
+    payload = json.dumps(features, separators=(",", ":"))
+    created = datetime.now(timezone.utc).isoformat()
+    try:
+        with _connect() as conn:
+            cur = conn.cursor()
+            if backend == "postgres":
+                cur.execute(
+                    """
+                    INSERT INTO prediction_features (prediction_id, features)
+                    VALUES (%s, %s) ON CONFLICT (prediction_id) DO NOTHING
+                    """,
+                    (prediction_id, payload),
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT OR IGNORE INTO prediction_features
+                        (prediction_id, created_at, features)
+                    VALUES (?, ?, ?)
+                    """,
+                    (prediction_id, created, payload),
+                )
+            cur.close()
+        return True
+    except Exception as exc:  # pragma: no cover - external service
+        logger.warning("log_prediction_features failed: %s", exc)
+        return False
+
+
+def recent_feature_rows(limit: int = 500, window_days: int = 30) -> list[dict]:
+    """Return recent binned feature summaries, newest first."""
+    backend = resolve_backend()
+    if backend == "none":
+        return []
+    import json
+
+    try:
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=window_days)).isoformat()
+        with _connect() as conn:
+            cur = conn.cursor()
+            if backend == "postgres":
+                cur.execute(
+                    "SELECT features FROM prediction_features "
+                    "WHERE created_at >= now() - (%s || ' days')::interval "
+                    "ORDER BY created_at DESC LIMIT %s",
+                    (str(int(window_days)), int(limit)),
+                )
+            else:
+                cur.execute(
+                    "SELECT features FROM prediction_features WHERE created_at >= ? "
+                    "ORDER BY created_at DESC LIMIT ?",
+                    (cutoff, int(limit)),
+                )
+            rows = cur.fetchall()
+            cur.close()
+        return [json.loads(r[0]) for r in rows]
+    except Exception as exc:  # pragma: no cover - external service
+        logger.warning("recent_feature_rows failed: %s", exc)
+        return []
+
+
+def clear_features() -> bool:
+    backend = resolve_backend()
+    if backend == "none":
+        return False
+    try:
+        with _connect() as conn:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM prediction_features")
+            cur.close()
+        return True
+    except Exception as exc:  # pragma: no cover
+        logger.warning("clear_features failed: %s", exc)
+        return False
 
 
 def health() -> dict:
