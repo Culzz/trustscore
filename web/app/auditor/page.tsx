@@ -118,8 +118,12 @@ export default function AuditorPage() {
         <p className="max-w-3xl text-sm text-slate-400">
           Governance view: policy simulation with the disparate-impact guardrail,
           Alpha/Beta model comparison, a bias injector, live drift and adversarial
-          alerting, model lineage, and a one-click compliance report. Every figure
-          is computed from the committed artifacts and the public portfolio slice.
+          alerting, model lineage, and a one-click compliance report.{" "}
+          <span className="text-slate-300">
+            The headline metrics and the guardrail are the final held-out test
+            evaluation; the sliders, A/B and bias injector run on the separate
+            policy tuning set (validation).
+          </span>
         </p>
       </header>
 
@@ -131,31 +135,43 @@ export default function AuditorPage() {
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <Stat
-          label="ROC-AUC (calibrated)"
+          label="ROC-AUC (calibrated, test)"
           value={calibrated?.roc_auc === undefined ? "—" : formatNum(calibrated.roc_auc, 4)}
+          hint={
+            calibrated?.intervals?.roc_auc
+              ? `95% CI [${formatNum(calibrated.intervals.roc_auc.ci_low, 3)}, ${formatNum(calibrated.intervals.roc_auc.ci_high, 3)}]`
+              : undefined
+          }
         />
         <Stat
-          label="PR-AUC"
-          value={calibrated?.pr_auc === undefined ? "—" : formatNum(calibrated.pr_auc, 4)}
+          label="PR-AUC (test)"
+          value={
+            calibrated?.pr_auc === undefined ? "—" : formatNum(calibrated.pr_auc, 4)
+          }
+          hint={
+            calibrated?.intervals?.pr_auc
+              ? `95% CI [${formatNum(calibrated.intervals.pr_auc.ci_low, 3)}, ${formatNum(calibrated.intervals.pr_auc.ci_high, 3)}]`
+              : undefined
+          }
         />
         <Stat
-          label="Brier"
+          label="Brier (test)"
           value={meta?.calibration.brier === null || meta?.calibration.brier === undefined ? "—" : formatNum(meta.calibration.brier, 4)}
         />
         <Stat
-          label="ECE"
+          label="ECE (test)"
           value={meta?.calibration.ece === null || meta?.calibration.ece === undefined ? "—" : formatNum(meta.calibration.ece, 4)}
         />
         <Stat
-          label="Guardrail (all attributes)"
+          label="Guardrail (final test)"
           value={guardrail?.passed ? "PASS" : "BREACH"}
           tone={guardrail?.passed ? "good" : "bad"}
           hint={`${guardrail?.n_breaches ?? 0} breach(es) · floor ${floor.toFixed(2)}`}
         />
         <Stat
-          label="Portfolio rows"
+          label="Tuning-set rows"
           value={portfolio ? portfolio.n.toLocaleString() : "—"}
-          hint={`${Object.keys(portfolio?.group_values ?? {}).length} audited attributes`}
+          hint={`policy tuning set (validation) · ${Object.keys(portfolio?.group_values ?? {}).length} audited attributes`}
         />
       </div>
 

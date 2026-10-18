@@ -16,7 +16,12 @@ calibration, a fairness audit, a decision-policy simulator and a model card.
 ## Headline results
 
 Trained and evaluated on the public **Kaggle Credit Risk Dataset** (32,416 rows
-after cleaning, 21.9% default rate). Test split, stratified, seed 42.
+after cleaning, 21.9% default rate) under a three-way **fit / tune / report**
+protocol: the model and the fairness mitigation are fitted on the training split,
+the decision policy is verified on the validation split (which is also what the
+auditor console reads), and the figures below are the **one-time** held-out test
+evaluation. The full contract is in [`docs/EVALUATION.md`](docs/EVALUATION.md) and
+the long-form results in [`reports/EVALUATION.md`](reports/EVALUATION.md).
 
 | Model | ROC-AUC | PR-AUC | Brier | Precision | Recall |
 | --- | --- | --- | --- | --- | --- |
@@ -26,12 +31,25 @@ after cleaning, 21.9% default rate). Test split, stratified, seed 42.
 
 * Calibration: **Brier 0.0527**, **expected calibration error 0.0053** across 10 bins.
 * Target exceeded: ROC-AUC ≥ 0.75 required, **0.949 achieved**.
-* Cost-based bands chosen by minimising expected cost: **approve ≤ 0.055**,
-  **decline ≥ 0.676** (`refer` between). Expected cost **0.0266** per unit of
-  loan exposure. Approval rate on test: **45.3%** (2,936 approve / 2,536 refer /
-  1,012 decline).
-* The measured AUC is optimistic for a real credit setting — see
-  [Limitations](#limitations).
+* The decision policy is the **analytic cost crossover** of the cost matrix
+  (**approve ≤ 0.05**, **decline ≥ 0.75**, `refer` between), not a grid search.
+  A grid search is still run, purely as a check: on the validation split it returns
+  a different-looking pair at **exactly the same cost** (`delta = 0.000e+00`),
+  because the score distribution has a gap that makes the surface flat. The
+  analytic crossover is deployed because it is the exact per-applicant optimum and
+  generalises to unseen applicants. Approval rate on test: **45.3%**
+  (2,936 approve / 2,536 refer / 1,012 decline).
+* **Ablation.** Removing the two lender-assigned fields (`loan_grade`,
+  `loan_int_rate`) costs **0.046 ROC-AUC** — that much of the headline skill is the
+  model reproducing the lender's own risk tiering.
+* **Out-of-population check.** On a held-out income segment the model drops
+  **0.074 ROC-AUC**. The random stratified split shares the training distribution;
+  it is not a forecast for future or different applicants.
+* **Fairness mitigation is experimental.** It targets one attribute at a time and
+  does **not** clear every audited attribute. All remaining breaches, the measured
+  cost of the intervention, and the sampling uncertainty around each figure are
+  reported rather than hidden.
+* See [Limitations](#limitations) for the full list.
 
 ## Figures
 
@@ -102,8 +120,8 @@ trustscore/
   web/        Next.js (React + TypeScript + Tailwind + Recharts) — persona shell
   api/        FastAPI service + the bundled, versioned model artifacts
   training/   offline pipeline: clean -> train -> calibrate -> explain -> audit
-  reports/    fairness, calibration, metrics, drift JSON + MODEL_CARD.md
-  docs/       architecture, API, deployment
+  reports/    fairness, calibration, metrics, drift JSON + MODEL_CARD.md + EVALUATION.md
+  docs/       architecture, API, deployment, evaluation protocol
   data/       raw data (git-ignored; never committed)
   .github/    CI workflows
 ```
@@ -156,7 +174,7 @@ python -m training.src.train
 | GET | `/registry` | Raw registry (group definitions, mitigation params) |
 | GET | `/mitigation` | Equalized-odds variants and their measured impact |
 | GET | `/context` | Macro feature-store context for a region |
-| GET | `/portfolio` | The public portfolio (full test split) used by the auditors' tools |
+| GET | `/portfolio` | The policy tuning set (validation split) used by the auditors' tools |
 | POST | `/policy/simulate` | Cut-offs → approval rate, cost, profit, fairness, sweep |
 | POST | `/ab/compare` | Alpha vs Beta on the same portfolio at the same policy |
 | POST | `/bias/inject` | Adversarially skew a group and test the controls |
@@ -242,23 +260,27 @@ below the four-fifths (0.80) floor except age band:
 
 ### Mitigation, measured
 
-Equalized-odds post-processing is fitted per attribute. The default variant
-(`loan_intent`) is the one that removes the most guardrail breaches:
+Equalized-odds post-processing is fitted on out-of-fold **training** scores (so it
+is not fitted on the rows it is reported on) and is available per attribute. The
+default variant (`loan_intent`) is the one that removes the most guardrail
+breaches. These are the **held-out test** figures:
 
 | Variant | DI ratio | Equalized-odds gap | Guardrail breaches | Realized cost / loan |
 | --- | --- | --- | --- | --- |
 | none (Alpha) | 0.546 | 0.301 | 4 | 0.0264 |
-| **loan_intent (Beta, default)** | **0.843** | **0.066** | **3** | 0.0276 |
-| person_home_ownership | 0.765 | 0.087 | 4 | 0.0275 |
-| income_band | 0.771 | 0.109 | 4 | 0.0280 |
-| age_band | 0.899 | 0.093 | 4 | 0.0276 |
+| **loan_intent (Beta, default)** | **0.859** | **0.066** | **3** | 0.0277 |
+| person_home_ownership | 0.749 | 0.084 | 4 | 0.0275 |
+| income_band | 0.743 | 0.095 | 4 | 0.0276 |
+| age_band | 0.900 | 0.085 | 4 | 0.0276 |
 
-Approval rate moves from 45.28% to 45.68% under the default variant. The honest
+Approval rate moves from 45.28% to 45.48% under the default variant. The honest
 reading: mitigation buys a large fairness improvement for a small cost increase,
 but it does **not** make the model compliant — three guardrail breaches remain,
 because equalized odds targets true/false-positive parity rather than
 selection-rate parity, and it only acts on one attribute at a time. The audit
-console says so on screen.
+console says so on screen, and reports the **cost** of the intervention next to the
+improvement. (The console runs on the policy tuning set, so its live figures differ
+slightly from this test table; both are labelled.)
 
 The dataset has **no gender, race or geography**, so those are reported as *not
 available*, not estimated. These figures are statistical disparities, not a
@@ -279,23 +301,40 @@ Step-by-step in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
   a production score for any real market.
 * The dataset's loan grade and interest rate are lender-assigned fields that
   already encode an underwriting judgement, so the headline AUC is optimistic.
+  The ablation in [`reports/EVALUATION.md`](reports/EVALUATION.md) measures how
+  much: removing them costs **0.046 ROC-AUC**.
+* **The random stratified split is not a forecast.** It shares the training
+  distribution; a held-out income segment loses **0.074 ROC-AUC**. Report figures
+  describe a similar population, not future or different applicants.
 * Fairness is audited only for attributes present in the data; gender, race and
-  geography are absent.
+  geography are absent. All disparity figures carry sampling-uncertainty intervals;
+  the intervals do **not** cover dataset shift or metric choice.
 * Mitigation removes only some guardrail breaches. Equalized odds equalises
-  true/false-positive rates on **one** attribute; it is not a compliance fix.
+  true/false-positive rates on **one** attribute; it is not a compliance fix. The
+  remaining breaches and the measured cost of the intervention are reported, not
+  hidden.
 * Counterfactuals and blueprints are model-generated scenarios, not guaranteed
-  approval conditions.
+  approval conditions. Immutable factors (age, tenure, prior default, lender-assigned
+  grade/rate) are never suggested, routes are capped to plausible ranges, and the
+  API says so explicitly when no change in the applicant's control helps.
+* **The auditor console runs on the policy tuning set (validation), not the final
+  test set.** Its live numbers differ from the model card by design and are
+  labelled as tuning-set figures.
 * **The macro feature store is an honest seeded mock.** Its context is displayed
   to applicants and can tilt a cut-off, but it is deliberately **not** an input to
   the model, so scores stay reproducible from the eleven applicant fields alone.
   The deviation is stated in the UI and in `docs/ARCHITECTURE.md`.
 * Monitoring is offline/simulated when no database is configured: with no live
-  stream the drift panel runs a clearly-labelled synthetic window.
+  stream the drift panel runs a clearly-labelled synthetic window. Async job state
+  is mirrored to the database when one is configured; without one it is in-process
+  and a recycled instance loses it (documented, not hidden).
 * Serverless functions cannot hold a WebSocket, so on Vercel the progress stream
   degrades to polling — same events, different transport.
 * Fairness figures are statistical disparities, not proof of legal compliance.
 * The applicant notice is template-generated and reviewed by rules, **not** by a
   lawyer; it demonstrates an ECOA-style pattern rather than giving legal advice.
+* Applicant probabilities are model estimates with real uncertainty behind them —
+  a point estimate, not a promise, and a small input change can cross a band.
 
 ## Data
 

@@ -24,6 +24,16 @@ interface Props {
   betaLabel: string;
 }
 
+/** Cost per loan is per $1 of exposure; money formatting would show "$0". */
+function cents(value: number): string {
+  return `${(value * 100).toFixed(2)}¢`;
+}
+
+function signedCents(value: number): string {
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${(Math.abs(value) * 100).toFixed(2)}¢`;
+}
+
 function CompareRow({
   label,
   alpha,
@@ -198,12 +208,12 @@ export function AbCompareGrid({
                     format={(v) => `${(v * 100).toFixed(2)} pts`}
                   />
                   <CompareRow
-                    label="Expected cost / loan"
-                    alpha={formatMoney(result.alpha.expected_cost_per_loan)}
-                    beta={formatMoney(result.beta.expected_cost_per_loan)}
+                    label="Expected cost / $1 exposure"
+                    alpha={cents(result.alpha.expected_cost_per_loan)}
+                    beta={cents(result.beta.expected_cost_per_loan)}
                     delta={result.delta.expected_cost_per_loan ?? null}
                     higherIsBetter={false}
-                    format={(v) => formatMoney(v)}
+                    format={(v) => signedCents(v)}
                   />
                   <CompareRow
                     label="Profit / loan"

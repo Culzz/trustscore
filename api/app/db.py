@@ -110,6 +110,17 @@ CREATE TABLE IF NOT EXISTS prediction_features (
 );
 CREATE INDEX IF NOT EXISTS prediction_features_created_at_idx
     ON prediction_features (created_at);
+CREATE TABLE IF NOT EXISTS jobs (
+    job_id     TEXT PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    status     TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    events     TEXT NOT NULL DEFAULT '[]',
+    result     TEXT,
+    error      TEXT
+);
+CREATE INDEX IF NOT EXISTS jobs_updated_at_idx ON jobs (updated_at);
 """
 
 _SQLITE_DDL = """
@@ -130,6 +141,17 @@ CREATE TABLE IF NOT EXISTS prediction_features (
 );
 CREATE INDEX IF NOT EXISTS prediction_features_created_at_idx
     ON prediction_features (created_at);
+CREATE TABLE IF NOT EXISTS jobs (
+    job_id     TEXT PRIMARY KEY,
+    kind       TEXT NOT NULL,
+    status     TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    events     TEXT NOT NULL DEFAULT '[]',
+    result     TEXT,
+    error      TEXT
+);
+CREATE INDEX IF NOT EXISTS jobs_updated_at_idx ON jobs (updated_at);
 """
 
 
@@ -355,6 +377,139 @@ def clear_features() -> bool:
     except Exception as exc:  # pragma: no cover
         logger.warning("clear_features failed: %s", exc)
         return False
+
+
+# ---------------------------------------------------------------------------
+# Durable job state
+# ---------------------------------------------------------------------------
+def save_job(job: dict) -> bool:
+    """Upsert one job record so polling survives an instance change.
+
+    Best-effort, like every other write here: when storage is unavailable the
+    in-memory bus still works, and the console reports the job as ephemeral.
+    """
+    import json
+
+    backend = resolve_backend()
+    if backend == "none":
+        return False
+    payload = {
+        "job_id": job["job_id"],
+        "kind": job.get("kind", "apply"),
+        "status": job.get("status", "queued"),
+        "created_at": job.get("created_at") or datetime.now(timezone.utc).isoformat(),
+        "updated_at": job.get("updated_at") or datetime.now(timezone.utc).isoformat(),
+        "events": json.dumps(job.get("events") or [], default=str),
+        "result": (
+            json.dumps(job.get("result"), default=str)
+            if job.get("result") is not None
+            else None
+        ),
+        "error": job.get("error"),
+    }
+    try:
+        with _connect() as conn:
+            cur = conn.cursor()
+            if backend == "postgres":
+                cur.execute(
+                    """
+                    INSERT INTO jobs
+                        (job_id, kind, status, created_at, updated_at, events, result, error)
+                    VALUES (%(job_id)s, %(kind)s, %(status)s, %(created_at)s,
+                            %(updated_at)s, %(events)s, %(result)s, %(error)s)
+                    ON CONFLICT (job_id) DO UPDATE SET
+                        status = EXCLUDED.status,
+                        updated_at = EXCLUDED.updated_at,
+                        events = EXCLUDED.events,
+                        result = EXCLUDED.result,
+                        error = EXCLUDED.error
+                    """,
+                    payload,
+                )
+            else:
+                cur.execute(
+                    """
+                    INSERT INTO jobs
+                        (job_id, kind, status, created_at, updated_at, events, result, error)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT (job_id) DO UPDATE SET
+                        status = excluded.status,
+                        updated_at = excluded.updated_at,
+                        events = excluded.events,
+                        result = excluded.result,
+                        error = excluded.error
+                    """,
+                    (
+                        payload["job_id"], payload["kind"], payload["status"],
+                        payload["created_at"], payload["updated_at"],
+                        payload["events"], payload["result"], payload["error"],
+                    ),
+                )
+            cur.close()
+        return True
+    except Exception as exc:  # pragma: no cover - external service
+        logger.warning("save_job failed: %s", exc)
+        return False
+
+
+def load_job(job_id: str) -> dict | None:
+    """Read a job back from durable storage (used when memory has lost it)."""
+    import json
+
+    backend = resolve_backend()
+    if backend == "none":
+        return None
+    try:
+        with _connect() as conn:
+            cur = conn.cursor()
+            sql = (
+                "SELECT job_id, kind, status, created_at, updated_at, events, result, error "
+                "FROM jobs WHERE job_id = " + ("%s" if backend == "postgres" else "?")
+            )
+            cur.execute(sql, (job_id,))
+            row = cur.fetchone()
+            cur.close()
+        if row is None:
+            return None
+        return {
+            "job_id": row[0],
+            "kind": row[1],
+            "status": row[2],
+            "created_at": row[3] if isinstance(row[3], str) else row[3].isoformat(),
+            "updated_at": row[4] if isinstance(row[4], str) else row[4].isoformat(),
+            "events": json.loads(row[5] or "[]"),
+            "result": json.loads(row[6]) if row[6] else None,
+            "error": row[7],
+            "durable": True,
+        }
+    except Exception as exc:  # pragma: no cover - external service
+        logger.warning("load_job failed: %s", exc)
+        return None
+
+
+def prune_jobs(ttl_seconds: int = 3600) -> int:
+    backend = resolve_backend()
+    if backend == "none":
+        return 0
+    try:
+        with _connect() as conn:
+            cur = conn.cursor()
+            if backend == "postgres":
+                cur.execute(
+                    "DELETE FROM jobs WHERE updated_at < now() - (%s || ' seconds')::interval",
+                    (str(int(ttl_seconds)),),
+                )
+            else:
+                cutoff = (
+                    datetime.now(timezone.utc) - timedelta(seconds=ttl_seconds)
+                ).isoformat()
+                cur.execute("DELETE FROM jobs WHERE updated_at < ?", (cutoff,))
+            deleted = cur.rowcount
+            cur.close()
+        return int(deleted or 0)
+    except Exception as exc:  # pragma: no cover - external service
+        logger.warning("prune_jobs failed: %s", exc)
+        return 0
 
 
 def health() -> dict:

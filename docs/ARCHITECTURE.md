@@ -29,13 +29,21 @@ pipeline and the online decision service.
      +--> audit services: portfolio.json, reference.json, registry.json
              (policy sim, A/B, bias injector, PSI/KS drift, ReportLab PDF)
 
-  OFFLINE (training/): raw CSV -> clean -> features -> train -> calibrate
-                       -> evaluate -> contribute (SHAP) -> fairness
-                       -> equalized-odds mitigation (per attribute)
-                       -> drift reference -> audit portfolio (test split)
+  OFFLINE (training/): raw CSV -> clean -> features
+                       -> split 60/20/20 (train / validation / test)
+                       -> train booster + cross-fitted isotonic calibration on train
+                       -> analytic cost thresholds, grid-verified on validation
+                       -> one-time evaluation on test
+                       -> fairness audit + equalized-odds mitigation (fit on train)
+                       -> ablation + out-of-population stress test
+                       -> drift reference -> audit portfolio (validation = tuning set)
                        -> registry
-                       -> model card -> export artifacts + reports
+                       -> model card + evaluation report -> export artifacts + reports
 ```
+
+The three-way protocol is the point of that pipeline. Fitting, policy tuning and
+final reporting happen on **different** rows, so no reported number is a fit to
+itself. See [`docs/EVALUATION.md`](EVALUATION.md).
 
 ## Why the model and the decision are separate
 
@@ -208,13 +216,23 @@ Recording these matters more than hiding them:
 * **A/B is two artifacts, not two live traffic splits.** Alpha vs Beta is scored
   on the same portfolio at the same policy, which isolates the effect of
   mitigation.
-* **The audit console reproduces the model card.** The auditors' tools run on the
-  full public test split, with calibrated scores stored verbatim in
-  `portfolio.json` and the same deterministic tie-break keys the offline
-  evaluation used (`PORTFOLIO_KEY_PREFIX`). Two consequences: the console's
-  disparate-impact ratio and equalized-odds gap equal the recorded training
-  figures exactly, and the four-fifths guardrail can be exercised for **any**
-  audited attribute rather than a single pre-sliced grouping.
+* **The audit console runs on the policy tuning set, not the final test set.**
+  `portfolio.json` is the public **validation** split (n = 6,483, key prefix
+  `tuning`), with calibrated scores stored verbatim and deterministic tie-break
+  keys. The row-level test split is never shipped, so the final evaluation cannot
+  be inspected and re-tuned interactively by accident. Two consequences: the
+  console can exercise the four-fifths guardrail for **any** audited attribute
+  rather than one pre-sliced grouping, and its figures are **expected to differ**
+  from the model card (which reports the one-time test evaluation). Every surface
+  that shows a tuning-set number labels it as such, and the numbers themselves
+  carry the provenance (`evaluation_protocol` in `metadata.json` and
+  `registry.json`).
+* **Fairness mitigation is fitted on train, scored on validation and test.** The
+  equalized-odds rule is fitted on out-of-fold training predictions, so both the
+  console's improvement and the card's improvement are out-of-sample. The
+  console also reports what the intervention **cost** (realized cost per loan,
+  approval-rate change, and how many attributes still breach), not just the ratio
+  it improved.
 * **Trustee note.** `GET /model`'s `fairness.guardrail` is the *global* check
   (every audited attribute at once, four breaches on this model), while
   `/policy/simulate` reports the guardrail for the **selected** attribute. Both

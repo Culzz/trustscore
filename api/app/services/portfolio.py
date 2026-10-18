@@ -1,10 +1,12 @@
 """Portfolio analytics: policy simulation, A/B comparison and bias injection.
 
-All of this runs on the public test split (``api/artifacts/portfolio.json``) so
-the audit dashboard can show real, group-aware numbers live -- approval rates,
-cost, profitability, disparate impact, equalized odds -- without a database and
-without touching applicant data. Using the full test split (rather than a sample)
-keeps the console's guardrail arithmetic identical to the model card's.
+All of this runs on the bundled **policy tuning set**
+(``api/artifacts/portfolio.json``, the validation split), so the audit console can
+show real, group-aware numbers live -- approval rates, cost, profitability,
+disparate impact, equalized odds -- without a database and without touching
+applicant data. The final test split is deliberately **not** shipped: it stays a
+one-time held-out evaluation (see ``docs/EVALUATION.md`` and the
+``evaluation_protocol`` block in metadata).
 
 Three things live here:
 
@@ -19,6 +21,7 @@ Three things live here:
 from __future__ import annotations
 
 import json
+import math
 from functools import lru_cache
 
 import numpy as np
@@ -139,6 +142,84 @@ def _eo_difference(
     return float(max(tpr_gap, fpr_gap))
 
 
+def _wilson(k: int, n: int, z: float = 1.96) -> list[float] | None:
+    """95% Wilson score interval for a proportion."""
+    if n <= 0:
+        return None
+    phat = k / n
+    denom = 1.0 + z * z / n
+    centre = phat + z * z / (2.0 * n)
+    margin = z * math.sqrt((phat * (1.0 - phat) + z * z / (4.0 * n)) / n)
+    return [max(0.0, (centre - margin) / denom), min(1.0, (centre + margin) / denom)]
+
+
+def _bootstrap_di_eo(
+    groups: np.ndarray,
+    approved: np.ndarray,
+    y: np.ndarray,
+    min_size: int = 30,
+    n_boot: int = 300,
+    seed: int = 42,
+) -> dict:
+    """Percentile bootstrap CIs for DI and the equalized-odds gap.
+
+    Group sample sizes vary by orders of magnitude here, so a bare point estimate
+    invites over-reading. Resamples applicants with replacement.
+    """
+    labels = sorted({str(x) for x in groups.tolist()})
+    code_of = {label: i for i, label in enumerate(labels)}
+    codes = np.array([code_of[str(g)] for g in groups.tolist()], dtype=int)
+    counts_all = np.bincount(codes, minlength=len(labels))
+    keep = np.array([counts_all[c] >= min_size for c in codes])
+    codes = np.where(keep, codes, -1)
+    n = len(codes)
+    appr_rep = approved.astype(float) * (y == 0).astype(float)
+    appr_defd = approved.astype(float) * (y == 1).astype(float)
+    rng = np.random.default_rng(seed)
+    di_draws: list[float] = []
+    eo_draws: list[float] = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, n, n)
+        g = codes[idx]
+        m = g >= 0
+        if not m.any():
+            continue
+        gc = g[m]
+        counts = np.bincount(gc, minlength=len(labels)).astype(float)
+        a = np.bincount(gc, weights=approved[idx][m].astype(float), minlength=len(labels))
+        rep = np.bincount(gc, weights=(y[idx][m] == 0).astype(float), minlength=len(labels))
+        dfd = np.bincount(gc, weights=(y[idx][m] == 1).astype(float), minlength=len(labels))
+        ar = np.bincount(gc, weights=appr_rep[idx][m], minlength=len(labels))
+        ad = np.bincount(gc, weights=appr_defd[idx][m], minlength=len(labels))
+        sr = np.where(counts > 0, a / np.maximum(counts, 1.0), np.nan)
+        tpr = np.where(rep > 0, ar / np.maximum(rep, 1.0), np.nan)
+        fpr = np.where(dfd > 0, ad / np.maximum(dfd, 1.0), np.nan)
+        sr_ok = sr[np.isfinite(sr)]
+        if len(sr_ok) >= 2 and sr_ok.max() > 0:
+            di_draws.append(float(sr_ok.min() / sr_ok.max()))
+        tpr_ok = tpr[np.isfinite(tpr)]
+        fpr_ok = fpr[np.isfinite(fpr)]
+        if len(tpr_ok) >= 2 or len(fpr_ok) >= 2:
+            eo_draws.append(
+                max(
+                    float(tpr_ok.max() - tpr_ok.min()) if len(tpr_ok) >= 2 else 0.0,
+                    float(fpr_ok.max() - fpr_ok.min()) if len(fpr_ok) >= 2 else 0.0,
+                )
+            )
+
+    def _pct(draws: list[float]) -> list[float] | None:
+        if len(draws) < 20:
+            return None
+        return [float(np.percentile(draws, 2.5)), float(np.percentile(draws, 97.5))]
+
+    return {
+        "n_boot": n_boot,
+        "method": "percentile bootstrap (resampling applicants with replacement)",
+        "disparate_impact_ratio_ci": _pct(di_draws),
+        "equalized_odds_difference_ci": _pct(eo_draws),
+    }
+
+
 def _fairness_table(
     y: np.ndarray, groups: np.ndarray, approved: np.ndarray, exposure: np.ndarray
 ) -> list[dict]:
@@ -157,8 +238,11 @@ def _fairness_table(
                 "group": g,
                 "n": n,
                 "selection_rate": float(a_g.mean()),
+                "selection_rate_ci": _wilson(int(a_g.sum()), n),
                 "tpr": float(a_g[repaid].mean()) if repaid.any() else None,
+                "tpr_ci": _wilson(int(a_g[repaid].sum()), int(repaid.sum())) if repaid.any() else None,
                 "fpr": float(a_g[defaulted].mean()) if defaulted.any() else None,
+                "fpr_ci": _wilson(int(a_g[defaulted].sum()), int(defaulted.sum())) if defaulted.any() else None,
                 "mean_exposure": float(exposure[mask].mean()),
                 "low_sample": n < 30,
             }
@@ -188,6 +272,7 @@ def simulate(
     loss_given_default: float = DEFAULT_LOSS_GIVEN_DEFAULT,
     pd_override: np.ndarray | None = None,
     attribute: str | None = None,
+    with_ci: bool = True,
 ) -> dict:
     """Apply a policy to the portfolio and return KPIs + the fairness guardrail.
 
@@ -207,11 +292,11 @@ def simulate(
     approved = pd <= approve_max_pd
     mitigation_note = None
     if apply_fairness and mitigation_params:
-        # Row keys are derived the same way as the offline evaluation (the slice
-        # preserves test-split order and records the shared prefix), so the
+        # Row keys are derived the same way as the offline measurement *of this
+        # set* (the tuning-set artifact records the shared prefix), so the
         # randomised tie-break -- and therefore every reported fairness figure --
-        # matches the model card exactly instead of flickering between runs.
-        prefix = portfolio.get("row_key_prefix", "test")
+        # is reproducible instead of flickering between runs.
+        prefix = portfolio.get("row_key_prefix", "tuning")
         approved = apply_equalized_odds(
             pd, groups, mitigation_params, keys=[f"{prefix}:{i}" for i in range(len(pd))]
         )
@@ -254,6 +339,9 @@ def simulate(
     per_group = _selection_rates(groups, is_approve)
     di = _di_ratio(per_group)
     eo = _eo_difference(y, groups, is_approve)
+    uncertainty = (
+        _bootstrap_di_eo(groups, is_approve, y) if with_ci else None
+    )
 
     band_counts = {
         APPROVE: int(is_approve.sum()),
@@ -271,14 +359,20 @@ def simulate(
                     "attribute": key,
                     "label": ATTRIBUTE_LABELS.get(key, key),
                     "disparate_impact_ratio": di,
+                    "disparate_impact_ratio_ci": (
+                        uncertainty or {}
+                    ).get("disparate_impact_ratio_ci"),
                     "floor": floor,
                     "lowest_group": worst["group"],
+                    "lowest_group_n": worst["n"],
                     "lowest_selection_rate": worst["selection_rate"],
                 }
             )
 
     return {
         "n": int(len(pd)),
+        "evaluation_set": portfolio.get("set", "validation"),
+        "evaluation_role": portfolio.get("role", "policy_tuning"),
         "approve_max_pd": float(approve_max_pd),
         "decline_min_pd": float(decline_min_pd),
         "apply_fairness": bool(apply_fairness),
@@ -293,6 +387,7 @@ def simulate(
         "loss_given_default": loss_given_default,
         "disparate_impact_ratio": di,
         "equalized_odds_difference": eo,
+        "uncertainty": uncertainty,
         "fairness_table": _fairness_table(y, groups, is_approve, exposure),
         "group_attribute": key,
         "guardrail": {
@@ -328,6 +423,7 @@ def sweep(
             margin_rate=margin_rate,
             loss_given_default=loss_given_default,
             attribute=attribute,
+            with_ci=False,
         )
         group_attribute = res["group_attribute"]
         points.append(
@@ -396,7 +492,7 @@ def bias_inject(
     attribute_group: str,
     factor: float = 1.5,
     approve_max_pd: float = 0.05,
-    decline_min_pd: float = 0.67,
+    decline_min_pd: float = 0.75,
     costs: dict | None = None,
     mitigation_params: dict | None = None,
     floor: float = 0.80,

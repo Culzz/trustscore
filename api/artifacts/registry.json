@@ -1,9 +1,34 @@
 {
-  "generated_at": "2026-10-17T13:32:53.601837+00:00",
+  "generated_at": "2026-10-17T14:56:17.092804+00:00",
   "default": "trustscore-1.0.0",
   "fair": "trustscore-1.1.0",
   "group_attribute": "age_band",
   "disparate_impact_floor": 0.8,
+  "evaluation_protocol": {
+    "protocol_version": "3-way (train / validation / test)",
+    "role_split": {
+      "train": "fit booster + cross-fitted isotonic calibration + equalized-odds mitigation",
+      "validation": "policy verification and the interactive auditor *policy tuning* set",
+      "test": "one-time held-out final evaluation (model card, evaluation report)"
+    },
+    "mitigation_fit_on": "train (out-of-fold calibrated scores)",
+    "mitigation_measured_on": [
+      "test (headline)",
+      "validation (console/tuning)"
+    ],
+    "policy_tuning_set": {
+      "name": "validation",
+      "rows": 6483,
+      "shipped_as_portfolio": true,
+      "note": "The auditor console experiments only on this set."
+    },
+    "final_evaluation_set": {
+      "name": "test",
+      "rows": 6484,
+      "shipped_as_portfolio": false,
+      "note": "Row-level test data is never shipped, so it stays held out."
+    }
+  },
   "mitigation_options": [
     {
       "id": "none",
@@ -23,17 +48,35 @@
       "label": "Age band",
       "impact": {
         "attribute": "age_band",
+        "evaluated_on": "test",
+        "n": 6484,
         "approval_rate_base": 0.4528069093152375,
-        "approval_rate_mitigated": 0.45203578038247993,
+        "approval_rate_mitigated": 0.4497223935842073,
         "realized_cost_per_loan_base": 0.026352968034700833,
-        "realized_cost_per_loan_mitigated": 0.02757022072517693,
+        "realized_cost_per_loan_mitigated": 0.02757348494254577,
         "disparate_impact_ratio_base": 0.8438543361675473,
-        "disparate_impact_ratio_mitigated": 0.8993303571428571,
+        "disparate_impact_ratio_mitigated": 0.9003314917127072,
         "equalized_odds_difference_base": 0.09501021964117706,
-        "equalized_odds_difference_mitigated": 0.09296309072093834,
+        "equalized_odds_difference_mitigated": 0.0849718293664482,
         "n_breaches_base": 4,
         "n_breaches_mitigated": 4,
-        "disparate_impact_gain": 0.05547602097530979
+        "disparate_impact_gain": 0.05647715554515986
+      },
+      "impact_tuning": {
+        "attribute": "age_band",
+        "evaluated_on": "validation",
+        "n": 6483,
+        "approval_rate_base": 0.4635199753200679,
+        "approval_rate_mitigated": 0.4605892333796082,
+        "realized_cost_per_loan_base": 0.024954839288485412,
+        "realized_cost_per_loan_mitigated": 0.025204203199358576,
+        "disparate_impact_ratio_base": 0.8041023482787473,
+        "disparate_impact_ratio_mitigated": 0.9202400694938009,
+        "equalized_odds_difference_base": 0.10485807978023409,
+        "equalized_odds_difference_mitigated": 0.02658105429740576,
+        "n_breaches_base": 4,
+        "n_breaches_mitigated": 4,
+        "disparate_impact_gain": 0.11613772121505361
       }
     },
     {
@@ -41,17 +84,35 @@
       "label": "Home ownership",
       "impact": {
         "attribute": "person_home_ownership",
+        "evaluated_on": "test",
+        "n": 6484,
         "approval_rate_base": 0.4528069093152375,
-        "approval_rate_mitigated": 0.4495681677976558,
+        "approval_rate_mitigated": 0.44910549043800124,
         "realized_cost_per_loan_base": 0.026352968034700833,
-        "realized_cost_per_loan_mitigated": 0.027522459017050027,
+        "realized_cost_per_loan_mitigated": 0.027467167580514023,
         "disparate_impact_ratio_base": 0.3750082718149078,
-        "disparate_impact_ratio_mitigated": 0.7652235282859376,
+        "disparate_impact_ratio_mitigated": 0.7490347179026424,
         "equalized_odds_difference_base": 0.48890733199700565,
-        "equalized_odds_difference_mitigated": 0.08656716417910448,
+        "equalized_odds_difference_mitigated": 0.08358208955223881,
         "n_breaches_base": 4,
         "n_breaches_mitigated": 4,
-        "disparate_impact_gain": 0.39021525647102984
+        "disparate_impact_gain": 0.3740264460877346
+      },
+      "impact_tuning": {
+        "attribute": "person_home_ownership",
+        "evaluated_on": "validation",
+        "n": 6483,
+        "approval_rate_base": 0.4635199753200679,
+        "approval_rate_mitigated": 0.45935523677309886,
+        "realized_cost_per_loan_base": 0.024954839288485412,
+        "realized_cost_per_loan_mitigated": 0.025659225151303536,
+        "disparate_impact_ratio_base": 0.38796253741910636,
+        "disparate_impact_ratio_mitigated": 0.6891187155748272,
+        "equalized_odds_difference_base": 0.46512774643364985,
+        "equalized_odds_difference_mitigated": 0.07429180011549863,
+        "n_breaches_base": 4,
+        "n_breaches_mitigated": 4,
+        "disparate_impact_gain": 0.3011561781557208
       }
     },
     {
@@ -59,17 +120,35 @@
       "label": "Loan purpose",
       "impact": {
         "attribute": "loan_intent",
+        "evaluated_on": "test",
+        "n": 6484,
         "approval_rate_base": 0.4528069093152375,
-        "approval_rate_mitigated": 0.45681677976557683,
+        "approval_rate_mitigated": 0.45481184454040713,
         "realized_cost_per_loan_base": 0.026352968034700833,
-        "realized_cost_per_loan_mitigated": 0.027593610945341383,
+        "realized_cost_per_loan_mitigated": 0.027685269368023485,
         "disparate_impact_ratio_base": 0.545690519733349,
-        "disparate_impact_ratio_mitigated": 0.8427416126191047,
+        "disparate_impact_ratio_mitigated": 0.858755705020418,
         "equalized_odds_difference_base": 0.30146286834184927,
         "equalized_odds_difference_mitigated": 0.06637168141592921,
         "n_breaches_base": 4,
         "n_breaches_mitigated": 3,
-        "disparate_impact_gain": 0.2970510928857557
+        "disparate_impact_gain": 0.31306518528706895
+      },
+      "impact_tuning": {
+        "attribute": "loan_intent",
+        "evaluated_on": "validation",
+        "n": 6483,
+        "approval_rate_base": 0.4635199753200679,
+        "approval_rate_mitigated": 0.46043498380379455,
+        "realized_cost_per_loan_base": 0.024954839288485412,
+        "realized_cost_per_loan_mitigated": 0.02665439750155183,
+        "disparate_impact_ratio_base": 0.5198902486061924,
+        "disparate_impact_ratio_mitigated": 0.8486980893255379,
+        "equalized_odds_difference_base": 0.334981134981135,
+        "equalized_odds_difference_mitigated": 0.08928571428571429,
+        "n_breaches_base": 4,
+        "n_breaches_mitigated": 3,
+        "disparate_impact_gain": 0.32880784071934555
       }
     },
     {
@@ -77,17 +156,35 @@
       "label": "Income band",
       "impact": {
         "attribute": "income_band",
+        "evaluated_on": "test",
+        "n": 6484,
         "approval_rate_base": 0.4528069093152375,
-        "approval_rate_mitigated": 0.45434916718075263,
+        "approval_rate_mitigated": 0.45049352251696484,
         "realized_cost_per_loan_base": 0.026352968034700833,
-        "realized_cost_per_loan_mitigated": 0.028017899125670365,
+        "realized_cost_per_loan_mitigated": 0.027591187814656536,
         "disparate_impact_ratio_base": 0.3796567154210913,
-        "disparate_impact_ratio_mitigated": 0.77074200911192,
+        "disparate_impact_ratio_mitigated": 0.743285740419712,
         "equalized_odds_difference_base": 0.32856930509104415,
-        "equalized_odds_difference_mitigated": 0.10863661053775121,
+        "equalized_odds_difference_mitigated": 0.0948148148148148,
         "n_breaches_base": 4,
         "n_breaches_mitigated": 4,
-        "disparate_impact_gain": 0.39108529369082873
+        "disparate_impact_gain": 0.36362902499862065
+      },
+      "impact_tuning": {
+        "attribute": "income_band",
+        "evaluated_on": "validation",
+        "n": 6483,
+        "approval_rate_base": 0.4635199753200679,
+        "approval_rate_mitigated": 0.4568872435600802,
+        "realized_cost_per_loan_base": 0.024954839288485412,
+        "realized_cost_per_loan_mitigated": 0.026455953050641422,
+        "disparate_impact_ratio_base": 0.3859147078347603,
+        "disparate_impact_ratio_mitigated": 0.7171918315930194,
+        "equalized_odds_difference_base": 0.33266290560557055,
+        "equalized_odds_difference_mitigated": 0.06539437391220915,
+        "n_breaches_base": 4,
+        "n_breaches_mitigated": 4,
+        "disparate_impact_gain": 0.3312771237582591
       }
     }
   ],
@@ -145,7 +242,7 @@
       "role": "baseline",
       "artifact": "model.joblib",
       "metadata": "metadata.json",
-      "trained_at": "2026-10-17T13:32:53.601837+00:00",
+      "trained_at": "2026-10-17T14:56:17.092804+00:00",
       "metrics": {
         "roc_auc": 0.9489743147853134,
         "pr_auc": 0.8984093385041627,
@@ -153,8 +250,8 @@
         "ece": 0.0052924004231287795
       },
       "thresholds": {
-        "approve_max_pd": 0.05533898305084745,
-        "decline_min_pd": 0.6761864406779661
+        "approve_max_pd": 0.05,
+        "decline_min_pd": 0.75
       },
       "fairness": {
         "disparate_impact_floor": 0.8,
@@ -174,7 +271,7 @@
       "role": "fair",
       "artifact": "model_fair.joblib",
       "metadata": "metadata_fair.json",
-      "trained_at": "2026-10-17T13:32:53.601837+00:00",
+      "trained_at": "2026-10-17T14:56:17.092804+00:00",
       "metrics": {
         "roc_auc": 0.9489743147853134,
         "pr_auc": 0.8984093385041627,
@@ -182,14 +279,14 @@
         "ece": 0.0052924004231287795
       },
       "thresholds": {
-        "approve_max_pd": 0.05533898305084745,
-        "decline_min_pd": 0.6761864406779661
+        "approve_max_pd": 0.05,
+        "decline_min_pd": 0.75
       },
       "fairness": {
         "disparate_impact_floor": 0.8,
         "guardrail_passed": false,
         "n_breaches": 3,
-        "disparate_impact_ratio": 0.8427416126191047,
+        "disparate_impact_ratio": 0.858755705020418,
         "equalized_odds_difference": 0.06637168141592921,
         "attribute": "loan_intent"
       },
@@ -200,65 +297,65 @@
         "summary": {
           "method": "equalized_odds",
           "attribute": "loan_intent",
-          "base_threshold": 0.05533898305084745,
-          "target_tpr": 0.5846001974333662,
-          "target_fpr": 0.031029619181946404,
+          "base_threshold": 0.05,
+          "target_tpr": 0.5837720452750724,
+          "target_fpr": 0.038561015753585705,
           "n_groups": 6,
           "n_randomised_groups": 6,
-          "mean_mix": 0.4125892455250155,
+          "mean_mix": 0.38730100429240494,
           "groups": {
             "DEBTCONSOLIDATION": {
-              "n": 1059,
+              "n": 3118,
               "fallback": false,
               "t_strict": 0.0446927374301676,
               "t_permissive": 0.07183257918552036,
-              "mix": 0.4425294493660311,
-              "tpr": 0.519674355495251,
-              "fpr": 0.018633540372670808
+              "mix": 0.5307432304783899,
+              "tpr": 0.6583629893238434,
+              "fpr": 0.054022988505747126
             },
             "EDUCATION": {
-              "n": 1259,
+              "n": 3838,
               "fallback": false,
               "t_strict": 0.0446927374301676,
               "t_permissive": 0.07183257918552036,
-              "mix": 0.31759146433657803,
-              "tpr": 0.5342857142857143,
-              "fpr": 0.04784688995215311
+              "mix": 0.21310902835154252,
+              "tpr": 0.5417322834645669,
+              "fpr": 0.058823529411764705
             },
             "HOMEIMPROVEMENT": {
-              "n": 722,
+              "n": 2144,
               "fallback": false,
-              "t_strict": 0.0446927374301676,
+              "t_strict": 0.03636363636363636,
               "t_permissive": 0.07183257918552036,
-              "mix": 0.8269503473859683,
-              "tpr": 0.6055555555555555,
-              "fpr": 0.03296703296703297
+              "mix": 0.774170428386346,
+              "tpr": 0.6122448979591837,
+              "fpr": 0.06597222222222222
             },
             "MEDICAL": {
-              "n": 1210,
+              "n": 3598,
               "fallback": false,
               "t_strict": 0.0446927374301676,
               "t_permissive": 0.07183257918552036,
-              "mix": 0.29787601094478466,
-              "tpr": 0.5451467268623025,
-              "fpr": 0.021604938271604937
+              "mix": 0.35955528221701416,
+              "tpr": 0.5344499429006472,
+              "fpr": 0.032955715756951595
             },
             "PERSONAL": {
-              "n": 1114,
+              "n": 3288,
               "fallback": false,
               "t_strict": 0.0446927374301676,
               "t_permissive": 0.07183257918552036,
-              "mix": 0.20179387866002066,
-              "tpr": 0.5426966292134832,
-              "fpr": 0.07589285714285714
+              "mix": 0.1903013086807799,
+              "tpr": 0.5578668683812406,
+              "fpr": 0.043478260869565216
             },
             "VENTURE": {
-              "n": 1119,
+              "n": 3463,
               "fallback": false,
               "t_strict": 0.0049261083743842365,
-              "t_permissive": 0.005633802816901409,
-              "mix": 0.38879432245671036,
-              "tpr": 0.5696465696465697,
+              "t_permissive": 0.010309278350515464,
+              "mix": 0.25592674764035744,
+              "tpr": 0.5685071574642127,
               "fpr": 0.0
             }
           }
@@ -268,72 +365,72 @@
             "summary": {
               "method": "equalized_odds",
               "attribute": "age_band",
-              "base_threshold": 0.05533898305084745,
-              "target_tpr": 0.5846001974333662,
-              "target_fpr": 0.031029619181946404,
+              "base_threshold": 0.05,
+              "target_tpr": 0.5837720452750724,
+              "target_fpr": 0.038561015753585705,
               "n_groups": 7,
-              "n_randomised_groups": 4,
-              "mean_mix": 0.3030198044872807,
+              "n_randomised_groups": 5,
+              "mean_mix": 0.4400599799283464,
               "groups": {
                 "18-25": {
-                  "n": 3015,
+                  "n": 9153,
                   "fallback": false,
                   "t_strict": 0.0446927374301676,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.12024819400443101,
-                  "tpr": 0.5714904679376083,
-                  "fpr": 0.019801980198019802
+                  "mix": 0.07611018351378261,
+                  "tpr": 0.5765023440829663,
+                  "fpr": 0.03122043519394513
                 },
                 "26-35": {
-                  "n": 2731,
+                  "n": 8259,
                   "fallback": false,
                   "t_strict": 0.03636363636363636,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.27482070804231024,
-                  "tpr": 0.539382772915707,
-                  "fpr": 0.0375
+                  "mix": 0.24389207376459834,
+                  "tpr": 0.5435545385202136,
+                  "fpr": 0.03873239436619718
                 },
                 "36-45": {
-                  "n": 602,
+                  "n": 1647,
                   "fallback": false,
                   "t_strict": 0.020761245674740483,
                   "t_permissive": 0.034166241713411524,
-                  "mix": 0.6430715202459153,
-                  "tpr": 0.6327800829875518,
-                  "fpr": 0.025
+                  "mix": 0.7955431190671955,
+                  "tpr": 0.6069230769230769,
+                  "fpr": 0.04610951008645533
                 },
                 "46-55": {
-                  "n": 104,
+                  "n": 306,
                   "fallback": false,
                   "t_strict": 0.034166241713411524,
-                  "t_permissive": 0.03636363636363636,
-                  "mix": 0.1739387956564661,
-                  "tpr": 0.5783132530120482,
-                  "fpr": 0.047619047619047616
+                  "t_permissive": 0.0446927374301676,
+                  "mix": 0.3452068353080884,
+                  "tpr": 0.5690376569037657,
+                  "fpr": 0.029850746268656716
                 },
                 "56-65": {
-                  "n": 23,
-                  "fallback": true,
-                  "t_strict": 0.05533898305084745,
-                  "t_permissive": 0.05533898305084745,
-                  "mix": 0.0,
-                  "tpr": null,
-                  "fpr": null
+                  "n": 63,
+                  "fallback": false,
+                  "t_strict": 0.020172910662824207,
+                  "t_permissive": 0.020531400966183576,
+                  "mix": 0.7395476879880674,
+                  "tpr": 0.6170212765957447,
+                  "fpr": 0.0
                 },
                 "66+": {
-                  "n": 7,
+                  "n": 18,
                   "fallback": true,
-                  "t_strict": 0.05533898305084745,
-                  "t_permissive": 0.05533898305084745,
+                  "t_strict": 0.05,
+                  "t_permissive": 0.05,
                   "mix": 0.0,
                   "tpr": null,
                   "fpr": null
                 },
                 "unknown": {
-                  "n": 1,
+                  "n": 3,
                   "fallback": true,
-                  "t_strict": 0.05533898305084745,
-                  "t_permissive": 0.05533898305084745,
+                  "t_strict": 0.05,
+                  "t_permissive": 0.05,
                   "mix": 0.0,
                   "tpr": null,
                   "fpr": null
@@ -342,17 +439,35 @@
             },
             "impact": {
               "attribute": "age_band",
+              "evaluated_on": "test",
+              "n": 6484,
               "approval_rate_base": 0.4528069093152375,
-              "approval_rate_mitigated": 0.45203578038247993,
+              "approval_rate_mitigated": 0.4497223935842073,
               "realized_cost_per_loan_base": 0.026352968034700833,
-              "realized_cost_per_loan_mitigated": 0.02757022072517693,
+              "realized_cost_per_loan_mitigated": 0.02757348494254577,
               "disparate_impact_ratio_base": 0.8438543361675473,
-              "disparate_impact_ratio_mitigated": 0.8993303571428571,
+              "disparate_impact_ratio_mitigated": 0.9003314917127072,
               "equalized_odds_difference_base": 0.09501021964117706,
-              "equalized_odds_difference_mitigated": 0.09296309072093834,
+              "equalized_odds_difference_mitigated": 0.0849718293664482,
               "n_breaches_base": 4,
               "n_breaches_mitigated": 4,
-              "disparate_impact_gain": 0.05547602097530979
+              "disparate_impact_gain": 0.05647715554515986
+            },
+            "impact_tuning": {
+              "attribute": "age_band",
+              "evaluated_on": "validation",
+              "n": 6483,
+              "approval_rate_base": 0.4635199753200679,
+              "approval_rate_mitigated": 0.4605892333796082,
+              "realized_cost_per_loan_base": 0.024954839288485412,
+              "realized_cost_per_loan_mitigated": 0.025204203199358576,
+              "disparate_impact_ratio_base": 0.8041023482787473,
+              "disparate_impact_ratio_mitigated": 0.9202400694938009,
+              "equalized_odds_difference_base": 0.10485807978023409,
+              "equalized_odds_difference_mitigated": 0.02658105429740576,
+              "n_breaches_base": 4,
+              "n_breaches_mitigated": 4,
+              "disparate_impact_gain": 0.11613772121505361
             },
             "guardrail": {
               "disparate_impact_floor": 0.8,
@@ -362,101 +477,245 @@
                 {
                   "attribute": "person_home_ownership",
                   "label": "Home ownership",
-                  "disparate_impact_ratio": 0.3787079049897634,
+                  "disparate_impact_ratio": 0.37668992325802403,
+                  "disparate_impact_ratio_ci": [
+                    0.35571166621573513,
+                    0.40189435036251153
+                  ],
                   "floor": 0.8,
                   "lowest_group": "RENT",
-                  "lowest_selection_rate": 0.33722671458520515
+                  "lowest_group_n": 3339,
+                  "lowest_selection_rate": 0.33542976939203356,
+                  "lowest_selection_rate_ci": [
+                    0.3196122702257567,
+                    0.3516255174097688
+                  ]
                 },
                 {
                   "attribute": "income_band",
                   "label": "Income band",
-                  "disparate_impact_ratio": 0.3845618409433276,
+                  "disparate_impact_ratio": 0.3830239590168438,
+                  "disparate_impact_ratio_ci": [
+                    0.3522418063560081,
+                    0.41689779572840574
+                  ],
                   "floor": 0.8,
                   "lowest_group": "low",
-                  "lowest_selection_rate": 0.26180458158017766
+                  "lowest_group_n": 2139,
+                  "lowest_selection_rate": 0.2613370733987845,
+                  "lowest_selection_rate_ci": [
+                    0.2431569455256305,
+                    0.2803729318110798
+                  ]
                 },
                 {
                   "attribute": "loan_intent",
                   "label": "Loan purpose",
-                  "disparate_impact_ratio": 0.5457025920873124,
+                  "disparate_impact_ratio": 0.5449631741506297,
+                  "disparate_impact_ratio_ci": [
+                    0.4953613253031663,
+                    0.5784282245565695
+                  ],
                   "floor": 0.8,
                   "lowest_group": "DEBTCONSOLIDATION",
-                  "lowest_selection_rate": 0.36363636363636365
+                  "lowest_group_n": 1012,
+                  "lowest_selection_rate": 0.36264822134387353,
+                  "lowest_selection_rate_ci": [
+                    0.3335982465243225,
+                    0.39273704039442553
+                  ]
                 },
                 {
                   "attribute": "cb_person_default_on_file",
                   "label": "Prior default on file",
-                  "disparate_impact_ratio": 0.2913673252748005,
+                  "disparate_impact_ratio": 0.2894220267161104,
+                  "disparate_impact_ratio_ci": [
+                    0.2505091415765749,
+                    0.3311236120057278
+                  ],
                   "floor": 0.8,
                   "lowest_group": "Y",
-                  "lowest_selection_rate": 0.1509433962264151
+                  "lowest_group_n": 1166,
+                  "lowest_selection_rate": 0.14922813036020582,
+                  "lowest_selection_rate_ci": [
+                    0.12992902293703515,
+                    0.17083101158387776
+                  ]
                 }
               ],
-              "mitigation_attribute": "age_band"
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "loan_intent",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
+            },
+            "guardrail_tuning": {
+              "disparate_impact_floor": 0.8,
+              "passed": false,
+              "n_breaches": 4,
+              "breaches": [
+                {
+                  "attribute": "person_home_ownership",
+                  "label": "Home ownership",
+                  "disparate_impact_ratio": 0.3861414046675913,
+                  "disparate_impact_ratio_ci": [
+                    0.3664216844358775,
+                    0.4065298513561711
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "RENT",
+                  "lowest_group_n": 3286,
+                  "lowest_selection_rate": 0.3444917833231893,
+                  "lowest_selection_rate_ci": [
+                    0.3284338136288434,
+                    0.36091293181932654
+                  ]
+                },
+                {
+                  "attribute": "income_band",
+                  "label": "Income band",
+                  "disparate_impact_ratio": 0.3897794461879909,
+                  "disparate_impact_ratio_ci": [
+                    0.3580506912163412,
+                    0.42788789653149334
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "low",
+                  "lowest_group_n": 2156,
+                  "lowest_selection_rate": 0.2699443413729128,
+                  "lowest_selection_rate_ci": [
+                    0.2516267146459307,
+                    0.28908034461248905
+                  ]
+                },
+                {
+                  "attribute": "loan_intent",
+                  "label": "Loan purpose",
+                  "disparate_impact_ratio": 0.5048791236464366,
+                  "disparate_impact_ratio_ci": [
+                    0.45166604466101407,
+                    0.54259810514592
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "HOMEIMPROVEMENT",
+                  "lowest_group_n": 722,
+                  "lowest_selection_rate": 0.3573407202216066,
+                  "lowest_selection_rate_ci": [
+                    0.32322442249816286,
+                    0.39296709917819184
+                  ]
+                },
+                {
+                  "attribute": "cb_person_default_on_file",
+                  "label": "Prior default on file",
+                  "disparate_impact_ratio": 0.33383181617000407,
+                  "disparate_impact_ratio_ci": [
+                    0.28868180666484167,
+                    0.37648593081027876
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "Y",
+                  "lowest_group_n": 1122,
+                  "lowest_selection_rate": 0.17379679144385027,
+                  "lowest_selection_rate_ci": [
+                    0.15274678217688206,
+                    0.19707294379522627
+                  ]
+                }
+              ],
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "loan_intent",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
             }
           },
           "person_home_ownership": {
             "summary": {
               "method": "equalized_odds",
               "attribute": "person_home_ownership",
-              "base_threshold": 0.05533898305084745,
-              "target_tpr": 0.5846001974333662,
-              "target_fpr": 0.031029619181946404,
+              "base_threshold": 0.05,
+              "target_tpr": 0.5837720452750724,
+              "target_fpr": 0.038561015753585705,
               "n_groups": 4,
-              "n_randomised_groups": 3,
-              "mean_mix": 0.6108189616238127,
+              "n_randomised_groups": 4,
+              "mean_mix": 0.47114494247417593,
               "groups": {
                 "MORTGAGE": {
-                  "n": 2623,
+                  "n": 8109,
                   "fallback": false,
                   "t_strict": 0.03636363636363636,
                   "t_permissive": 0.05825242718446602,
-                  "mix": 0.5253770541455303,
-                  "tpr": 0.5860121633362294,
-                  "fpr": 0.07476635514018691
+                  "mix": 0.35399665178947487,
+                  "tpr": 0.5494489968917773,
+                  "fpr": 0.07565470417070805
                 },
                 "OTHER": {
-                  "n": 27,
-                  "fallback": true,
-                  "t_strict": 0.05533898305084745,
-                  "t_permissive": 0.05533898305084745,
-                  "mix": 0.0,
-                  "tpr": null,
-                  "fpr": null
+                  "n": 64,
+                  "fallback": false,
+                  "t_strict": 0.04103134761564373,
+                  "t_permissive": 0.07183257918552036,
+                  "mix": 0.11432833201719744,
+                  "tpr": 0.5681818181818182,
+                  "fpr": 0.0
                 },
                 "OWN": {
-                  "n": 547,
+                  "n": 1523,
                   "fallback": false,
                   "t_strict": -1.0,
                   "t_permissive": 0.0,
-                  "mix": 0.7678556997376079,
-                  "tpr": 0.7613412228796844,
+                  "mix": 0.8339600646786749,
+                  "tpr": 0.7,
                   "fpr": 0.0
                 },
                 "RENT": {
-                  "n": 3286,
+                  "n": 9753,
                   "fallback": false,
-                  "t_strict": 0.05825242718446602,
+                  "t_strict": 0.0446927374301676,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.5392241309882996,
-                  "tpr": 0.6480322003577818,
-                  "fpr": 0.03333333333333333
+                  "mix": 0.5822947214113566,
+                  "tpr": 0.6419567827130852,
+                  "fpr": 0.04273227581741664
                 }
               }
             },
             "impact": {
               "attribute": "person_home_ownership",
+              "evaluated_on": "test",
+              "n": 6484,
               "approval_rate_base": 0.4528069093152375,
-              "approval_rate_mitigated": 0.4495681677976558,
+              "approval_rate_mitigated": 0.44910549043800124,
               "realized_cost_per_loan_base": 0.026352968034700833,
-              "realized_cost_per_loan_mitigated": 0.027522459017050027,
+              "realized_cost_per_loan_mitigated": 0.027467167580514023,
               "disparate_impact_ratio_base": 0.3750082718149078,
-              "disparate_impact_ratio_mitigated": 0.7652235282859376,
+              "disparate_impact_ratio_mitigated": 0.7490347179026424,
               "equalized_odds_difference_base": 0.48890733199700565,
-              "equalized_odds_difference_mitigated": 0.08656716417910448,
+              "equalized_odds_difference_mitigated": 0.08358208955223881,
               "n_breaches_base": 4,
               "n_breaches_mitigated": 4,
-              "disparate_impact_gain": 0.39021525647102984
+              "disparate_impact_gain": 0.3740264460877346
+            },
+            "impact_tuning": {
+              "attribute": "person_home_ownership",
+              "evaluated_on": "validation",
+              "n": 6483,
+              "approval_rate_base": 0.4635199753200679,
+              "approval_rate_mitigated": 0.45935523677309886,
+              "realized_cost_per_loan_base": 0.024954839288485412,
+              "realized_cost_per_loan_mitigated": 0.025659225151303536,
+              "disparate_impact_ratio_base": 0.38796253741910636,
+              "disparate_impact_ratio_mitigated": 0.6891187155748272,
+              "equalized_odds_difference_base": 0.46512774643364985,
+              "equalized_odds_difference_mitigated": 0.07429180011549863,
+              "n_breaches_base": 4,
+              "n_breaches_mitigated": 4,
+              "disparate_impact_gain": 0.3011561781557208
             },
             "guardrail": {
               "disparate_impact_floor": 0.8,
@@ -466,119 +725,263 @@
                 {
                   "attribute": "person_home_ownership",
                   "label": "Home ownership",
-                  "disparate_impact_ratio": 0.7652235282859376,
+                  "disparate_impact_ratio": 0.7490347179026424,
+                  "disparate_impact_ratio_ci": [
+                    0.6848462316727391,
+                    0.8046830403929391
+                  ],
                   "floor": 0.8,
                   "lowest_group": "RENT",
-                  "lowest_selection_rate": 0.3923330338424678
+                  "lowest_group_n": 3339,
+                  "lowest_selection_rate": 0.3950284516322252,
+                  "lowest_selection_rate_ci": [
+                    0.37857645867954187,
+                    0.41172171159571147
+                  ]
                 },
                 {
                   "attribute": "income_band",
                   "label": "Income band",
-                  "disparate_impact_ratio": 0.3557829531753648,
+                  "disparate_impact_ratio": 0.35928157863641735,
+                  "disparate_impact_ratio_ci": [
+                    0.3290076897165221,
+                    0.3923428571842751
+                  ],
                   "floor": 0.8,
                   "lowest_group": "low",
-                  "lowest_selection_rate": 0.24544179523141654
+                  "lowest_group_n": 2139,
+                  "lowest_selection_rate": 0.24731182795698925,
+                  "lowest_selection_rate_ci": [
+                    0.22949122014784804,
+                    0.26603845409405574
+                  ]
                 },
                 {
                   "attribute": "loan_intent",
                   "label": "Loan purpose",
-                  "disparate_impact_ratio": 0.5301339285714286,
+                  "disparate_impact_ratio": 0.5164679952815545,
+                  "disparate_impact_ratio_ci": [
+                    0.46047609804003165,
+                    0.5678899780542351
+                  ],
                   "floor": 0.8,
                   "lowest_group": "HOMEIMPROVEMENT",
-                  "lowest_selection_rate": 0.3392857142857143
+                  "lowest_group_n": 728,
+                  "lowest_selection_rate": 0.3324175824175824,
+                  "lowest_selection_rate_ci": [
+                    0.2991554794389921,
+                    0.36743904046804776
+                  ]
                 },
                 {
                   "attribute": "cb_person_default_on_file",
                   "label": "Prior default on file",
-                  "disparate_impact_ratio": 0.291297842771469,
+                  "disparate_impact_ratio": 0.29516558430359263,
+                  "disparate_impact_ratio_ci": [
+                    0.25481676055020336,
+                    0.3358833387227695
+                  ],
                   "floor": 0.8,
                   "lowest_group": "Y",
-                  "lowest_selection_rate": 0.15008576329331047
+                  "lowest_group_n": 1166,
+                  "lowest_selection_rate": 0.15180102915951973,
+                  "lowest_selection_rate_ci": [
+                    0.13235006452436002,
+                    0.1735388694988445
+                  ]
                 }
               ],
-              "mitigation_attribute": "age_band"
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "loan_intent",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
+            },
+            "guardrail_tuning": {
+              "disparate_impact_floor": 0.8,
+              "passed": false,
+              "n_breaches": 4,
+              "breaches": [
+                {
+                  "attribute": "person_home_ownership",
+                  "label": "Home ownership",
+                  "disparate_impact_ratio": 0.6891187155748272,
+                  "disparate_impact_ratio_ci": [
+                    0.6362687756696169,
+                    0.7432173461369767
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "RENT",
+                  "lowest_group_n": 3286,
+                  "lowest_selection_rate": 0.4056603773584906,
+                  "lowest_selection_rate_ci": [
+                    0.38899113353242243,
+                    0.42254994491950065
+                  ]
+                },
+                {
+                  "attribute": "income_band",
+                  "label": "Income band",
+                  "disparate_impact_ratio": 0.3699680717953144,
+                  "disparate_impact_ratio_ci": [
+                    0.3383930707631502,
+                    0.40910416155939566
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "low",
+                  "lowest_group_n": 2156,
+                  "lowest_selection_rate": 0.25742115027829315,
+                  "lowest_selection_rate_ci": [
+                    0.23940851647265765,
+                    0.2762967093179745
+                  ]
+                },
+                {
+                  "attribute": "loan_intent",
+                  "label": "Loan purpose",
+                  "disparate_impact_ratio": 0.48986326163490085,
+                  "disparate_impact_ratio_ci": [
+                    0.43440844999877776,
+                    0.5516966276898009
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "HOMEIMPROVEMENT",
+                  "lowest_group_n": 722,
+                  "lowest_selection_rate": 0.3296398891966759,
+                  "lowest_selection_rate_ci": [
+                    0.29633099440112104,
+                    0.3647520848822929
+                  ]
+                },
+                {
+                  "attribute": "cb_person_default_on_file",
+                  "label": "Prior default on file",
+                  "disparate_impact_ratio": 0.3055646306071878,
+                  "disparate_impact_ratio_ci": [
+                    0.2657265547386834,
+                    0.3496436881554014
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "Y",
+                  "lowest_group_n": 1122,
+                  "lowest_selection_rate": 0.15953654188948307,
+                  "lowest_selection_rate_ci": [
+                    0.13927693721371948,
+                    0.1821196073801204
+                  ]
+                }
+              ],
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "loan_intent",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
             }
           },
           "loan_intent": {
             "summary": {
               "method": "equalized_odds",
               "attribute": "loan_intent",
-              "base_threshold": 0.05533898305084745,
-              "target_tpr": 0.5846001974333662,
-              "target_fpr": 0.031029619181946404,
+              "base_threshold": 0.05,
+              "target_tpr": 0.5837720452750724,
+              "target_fpr": 0.038561015753585705,
               "n_groups": 6,
               "n_randomised_groups": 6,
-              "mean_mix": 0.4125892455250155,
+              "mean_mix": 0.38730100429240494,
               "groups": {
                 "DEBTCONSOLIDATION": {
-                  "n": 1059,
+                  "n": 3118,
                   "fallback": false,
                   "t_strict": 0.0446927374301676,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.4425294493660311,
-                  "tpr": 0.519674355495251,
-                  "fpr": 0.018633540372670808
+                  "mix": 0.5307432304783899,
+                  "tpr": 0.6583629893238434,
+                  "fpr": 0.054022988505747126
                 },
                 "EDUCATION": {
-                  "n": 1259,
+                  "n": 3838,
                   "fallback": false,
                   "t_strict": 0.0446927374301676,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.31759146433657803,
-                  "tpr": 0.5342857142857143,
-                  "fpr": 0.04784688995215311
+                  "mix": 0.21310902835154252,
+                  "tpr": 0.5417322834645669,
+                  "fpr": 0.058823529411764705
                 },
                 "HOMEIMPROVEMENT": {
-                  "n": 722,
+                  "n": 2144,
                   "fallback": false,
-                  "t_strict": 0.0446927374301676,
+                  "t_strict": 0.03636363636363636,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.8269503473859683,
-                  "tpr": 0.6055555555555555,
-                  "fpr": 0.03296703296703297
+                  "mix": 0.774170428386346,
+                  "tpr": 0.6122448979591837,
+                  "fpr": 0.06597222222222222
                 },
                 "MEDICAL": {
-                  "n": 1210,
+                  "n": 3598,
                   "fallback": false,
                   "t_strict": 0.0446927374301676,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.29787601094478466,
-                  "tpr": 0.5451467268623025,
-                  "fpr": 0.021604938271604937
+                  "mix": 0.35955528221701416,
+                  "tpr": 0.5344499429006472,
+                  "fpr": 0.032955715756951595
                 },
                 "PERSONAL": {
-                  "n": 1114,
+                  "n": 3288,
                   "fallback": false,
                   "t_strict": 0.0446927374301676,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.20179387866002066,
-                  "tpr": 0.5426966292134832,
-                  "fpr": 0.07589285714285714
+                  "mix": 0.1903013086807799,
+                  "tpr": 0.5578668683812406,
+                  "fpr": 0.043478260869565216
                 },
                 "VENTURE": {
-                  "n": 1119,
+                  "n": 3463,
                   "fallback": false,
                   "t_strict": 0.0049261083743842365,
-                  "t_permissive": 0.005633802816901409,
-                  "mix": 0.38879432245671036,
-                  "tpr": 0.5696465696465697,
+                  "t_permissive": 0.010309278350515464,
+                  "mix": 0.25592674764035744,
+                  "tpr": 0.5685071574642127,
                   "fpr": 0.0
                 }
               }
             },
             "impact": {
               "attribute": "loan_intent",
+              "evaluated_on": "test",
+              "n": 6484,
               "approval_rate_base": 0.4528069093152375,
-              "approval_rate_mitigated": 0.45681677976557683,
+              "approval_rate_mitigated": 0.45481184454040713,
               "realized_cost_per_loan_base": 0.026352968034700833,
-              "realized_cost_per_loan_mitigated": 0.027593610945341383,
+              "realized_cost_per_loan_mitigated": 0.027685269368023485,
               "disparate_impact_ratio_base": 0.545690519733349,
-              "disparate_impact_ratio_mitigated": 0.8427416126191047,
+              "disparate_impact_ratio_mitigated": 0.858755705020418,
               "equalized_odds_difference_base": 0.30146286834184927,
               "equalized_odds_difference_mitigated": 0.06637168141592921,
               "n_breaches_base": 4,
               "n_breaches_mitigated": 3,
-              "disparate_impact_gain": 0.2970510928857557
+              "disparate_impact_gain": 0.31306518528706895
+            },
+            "impact_tuning": {
+              "attribute": "loan_intent",
+              "evaluated_on": "validation",
+              "n": 6483,
+              "approval_rate_base": 0.4635199753200679,
+              "approval_rate_mitigated": 0.46043498380379455,
+              "realized_cost_per_loan_base": 0.024954839288485412,
+              "realized_cost_per_loan_mitigated": 0.02665439750155183,
+              "disparate_impact_ratio_base": 0.5198902486061924,
+              "disparate_impact_ratio_mitigated": 0.8486980893255379,
+              "equalized_odds_difference_base": 0.334981134981135,
+              "equalized_odds_difference_mitigated": 0.08928571428571429,
+              "n_breaches_base": 4,
+              "n_breaches_mitigated": 3,
+              "disparate_impact_gain": 0.32880784071934555
             },
             "guardrail": {
               "disparate_impact_floor": 0.8,
@@ -588,93 +991,209 @@
                 {
                   "attribute": "person_home_ownership",
                   "label": "Home ownership",
-                  "disparate_impact_ratio": 0.3871075783696718,
+                  "disparate_impact_ratio": 0.3867650052914685,
+                  "disparate_impact_ratio_ci": [
+                    0.36670566169760693,
+                    0.41342296353940017
+                  ],
                   "floor": 0.8,
                   "lowest_group": "RENT",
-                  "lowest_selection_rate": 0.33842467804731957
+                  "lowest_group_n": 3339,
+                  "lowest_selection_rate": 0.33812518718179096,
+                  "lowest_selection_rate_ci": [
+                    0.3222730711753677,
+                    0.35434935688105
+                  ]
                 },
                 {
                   "attribute": "income_band",
                   "label": "Income band",
-                  "disparate_impact_ratio": 0.3682409541285915,
+                  "disparate_impact_ratio": 0.3670073387432182,
+                  "disparate_impact_ratio_ci": [
+                    0.33869008751876234,
+                    0.40187019516305095
+                  ],
                   "floor": 0.8,
                   "lowest_group": "low",
-                  "lowest_selection_rate": 0.25292192613370734
+                  "lowest_group_n": 2139,
+                  "lowest_selection_rate": 0.2515194015895278,
+                  "lowest_selection_rate_ci": [
+                    0.23358828737226578,
+                    0.27034144779807995
+                  ]
                 },
                 {
                   "attribute": "cb_person_default_on_file",
                   "label": "Prior default on file",
-                  "disparate_impact_ratio": 0.3038404784214365,
+                  "disparate_impact_ratio": 0.29472911803134544,
+                  "disparate_impact_ratio_ci": [
+                    0.25635443559983423,
+                    0.33245994296568
+                  ],
                   "floor": 0.8,
                   "lowest_group": "Y",
-                  "lowest_selection_rate": 0.15866209262435677
+                  "lowest_group_n": 1166,
+                  "lowest_selection_rate": 0.153516295025729,
+                  "lowest_selection_rate_ci": [
+                    0.13396522629688282,
+                    0.17534297406118277
+                  ]
                 }
               ],
-              "mitigation_attribute": "age_band"
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
+            },
+            "guardrail_tuning": {
+              "disparate_impact_floor": 0.8,
+              "passed": false,
+              "n_breaches": 3,
+              "breaches": [
+                {
+                  "attribute": "person_home_ownership",
+                  "label": "Home ownership",
+                  "disparate_impact_ratio": 0.38807298202374957,
+                  "disparate_impact_ratio_ci": [
+                    0.36768639620175614,
+                    0.4095382758341019
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "RENT",
+                  "lowest_group_n": 3286,
+                  "lowest_selection_rate": 0.344796104686549,
+                  "lowest_selection_rate_ci": [
+                    0.32873438438943015,
+                    0.3612202930637335
+                  ]
+                },
+                {
+                  "attribute": "income_band",
+                  "label": "Income band",
+                  "disparate_impact_ratio": 0.3668214901981136,
+                  "disparate_impact_ratio_ci": [
+                    0.33778507884477127,
+                    0.4016975947190851
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "low",
+                  "lowest_group_n": 2156,
+                  "lowest_selection_rate": 0.25463821892393323,
+                  "lowest_selection_rate_ci": [
+                    0.23669600925517664,
+                    0.27345325354261385
+                  ]
+                },
+                {
+                  "attribute": "cb_person_default_on_file",
+                  "label": "Prior default on file",
+                  "disparate_impact_ratio": 0.33945418856455395,
+                  "disparate_impact_ratio_ci": [
+                    0.29580588304430433,
+                    0.38188948089073804
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "Y",
+                  "lowest_group_n": 1122,
+                  "lowest_selection_rate": 0.17647058823529413,
+                  "lowest_selection_rate_ci": [
+                    0.155278577331861,
+                    0.1998704951486727
+                  ]
+                }
+              ],
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
             }
           },
           "income_band": {
             "summary": {
               "method": "equalized_odds",
               "attribute": "income_band",
-              "base_threshold": 0.05533898305084745,
-              "target_tpr": 0.5846001974333662,
-              "target_fpr": 0.031029619181946404,
+              "base_threshold": 0.05,
+              "target_tpr": 0.5837720452750724,
+              "target_fpr": 0.038561015753585705,
               "n_groups": 4,
               "n_randomised_groups": 4,
-              "mean_mix": 0.29676305191276253,
+              "mean_mix": 0.5777083662785716,
               "groups": {
                 "high": {
-                  "n": 618,
+                  "n": 1938,
                   "fallback": false,
-                  "t_strict": 0.020761245674740483,
-                  "t_permissive": 0.034166241713411524,
-                  "mix": 0.06515446997109538,
-                  "tpr": 0.5659050966608085,
-                  "fpr": 0.061224489795918366
+                  "t_strict": 0.017241379310344827,
+                  "t_permissive": 0.020531400966183576,
+                  "mix": 0.972365675410277,
+                  "tpr": 0.5705346985210467,
+                  "fpr": 0.09444444444444444
                 },
                 "low": {
-                  "n": 2156,
+                  "n": 6486,
                   "fallback": false,
-                  "t_strict": 0.0765646916476593,
+                  "t_strict": 0.07183257918552036,
                   "t_permissive": 0.08115942028985507,
-                  "mix": 0.48850859604120783,
-                  "tpr": 0.5361050328227571,
-                  "fpr": 0.01910828025477707
+                  "mix": 0.46995393705344135,
+                  "tpr": 0.5356029729081755,
+                  "fpr": 0.028941684665226782
                 },
                 "lower-middle": {
-                  "n": 2072,
+                  "n": 6350,
                   "fallback": false,
-                  "t_strict": 0.0446927374301676,
+                  "t_strict": 0.03636363636363636,
                   "t_permissive": 0.07183257918552036,
-                  "mix": 0.15096772384733106,
-                  "tpr": 0.5625744934445769,
-                  "fpr": 0.03299492385786802
+                  "mix": 0.2786057501469291,
+                  "tpr": 0.5357351509250243,
+                  "fpr": 0.037037037037037035
                 },
                 "upper-middle": {
-                  "n": 1637,
+                  "n": 4675,
                   "fallback": false,
                   "t_strict": 0.020761245674740483,
                   "t_permissive": 0.034166241713411524,
-                  "mix": 0.482421417791416,
-                  "tpr": 0.5114029025570145,
-                  "fpr": 0.02631578947368421
+                  "mix": 0.5899081025036387,
+                  "tpr": 0.638189738625363,
+                  "fpr": 0.06998158379373849
                 }
               }
             },
             "impact": {
               "attribute": "income_band",
+              "evaluated_on": "test",
+              "n": 6484,
               "approval_rate_base": 0.4528069093152375,
-              "approval_rate_mitigated": 0.45434916718075263,
+              "approval_rate_mitigated": 0.45049352251696484,
               "realized_cost_per_loan_base": 0.026352968034700833,
-              "realized_cost_per_loan_mitigated": 0.028017899125670365,
+              "realized_cost_per_loan_mitigated": 0.027591187814656536,
               "disparate_impact_ratio_base": 0.3796567154210913,
-              "disparate_impact_ratio_mitigated": 0.77074200911192,
+              "disparate_impact_ratio_mitigated": 0.743285740419712,
               "equalized_odds_difference_base": 0.32856930509104415,
-              "equalized_odds_difference_mitigated": 0.10863661053775121,
+              "equalized_odds_difference_mitigated": 0.0948148148148148,
               "n_breaches_base": 4,
               "n_breaches_mitigated": 4,
-              "disparate_impact_gain": 0.39108529369082873
+              "disparate_impact_gain": 0.36362902499862065
+            },
+            "impact_tuning": {
+              "attribute": "income_band",
+              "evaluated_on": "validation",
+              "n": 6483,
+              "approval_rate_base": 0.4635199753200679,
+              "approval_rate_mitigated": 0.4568872435600802,
+              "realized_cost_per_loan_base": 0.024954839288485412,
+              "realized_cost_per_loan_mitigated": 0.026455953050641422,
+              "disparate_impact_ratio_base": 0.3859147078347603,
+              "disparate_impact_ratio_mitigated": 0.7171918315930194,
+              "equalized_odds_difference_base": 0.33266290560557055,
+              "equalized_odds_difference_mitigated": 0.06539437391220915,
+              "n_breaches_base": 4,
+              "n_breaches_mitigated": 4,
+              "disparate_impact_gain": 0.3312771237582591
             },
             "guardrail": {
               "disparate_impact_floor": 0.8,
@@ -684,37 +1203,163 @@
                 {
                   "attribute": "person_home_ownership",
                   "label": "Home ownership",
-                  "disparate_impact_ratio": 0.4111405169035769,
+                  "disparate_impact_ratio": 0.4098012969788095,
+                  "disparate_impact_ratio_ci": [
+                    0.390144242772716,
+                    0.43467791149619894
+                  ],
                   "floor": 0.8,
                   "lowest_group": "RENT",
-                  "lowest_selection_rate": 0.3677747828691225
+                  "lowest_group_n": 3339,
+                  "lowest_selection_rate": 0.3665768194070081,
+                  "lowest_selection_rate_ci": [
+                    0.3503941099307958,
+                    0.38306618923503977
+                  ]
                 },
                 {
                   "attribute": "income_band",
                   "label": "Income band",
-                  "disparate_impact_ratio": 0.77074200911192,
+                  "disparate_impact_ratio": 0.743285740419712,
+                  "disparate_impact_ratio_ci": [
+                    0.6977002865794378,
+                    0.7995336349122873
+                  ],
                   "floor": 0.8,
                   "lowest_group": "low",
-                  "lowest_selection_rate": 0.3903693314633006
+                  "lowest_group_n": 2139,
+                  "lowest_selection_rate": 0.38803179055633474,
+                  "lowest_selection_rate_ci": [
+                    0.3675987009407169,
+                    0.40886634435241165
+                  ]
                 },
                 {
                   "attribute": "loan_intent",
                   "label": "Loan purpose",
-                  "disparate_impact_ratio": 0.49280234590207633,
+                  "disparate_impact_ratio": 0.48531091041212504,
+                  "disparate_impact_ratio_ci": [
+                    0.43338073708085895,
+                    0.5287156674039827
+                  ],
                   "floor": 0.8,
                   "lowest_group": "HOMEIMPROVEMENT",
-                  "lowest_selection_rate": 0.3324175824175824
+                  "lowest_group_n": 728,
+                  "lowest_selection_rate": 0.3269230769230769,
+                  "lowest_selection_rate_ci": [
+                    0.29383325089065016,
+                    0.36182994180022715
+                  ]
                 },
                 {
                   "attribute": "cb_person_default_on_file",
                   "label": "Prior default on file",
-                  "disparate_impact_ratio": 0.2671309327829033,
+                  "disparate_impact_ratio": 0.27305775392283044,
+                  "disparate_impact_ratio_ci": [
+                    0.22923154459579348,
+                    0.31837916209064526
+                  ],
                   "floor": 0.8,
                   "lowest_group": "Y",
-                  "lowest_selection_rate": 0.13979416809605488
+                  "lowest_group_n": 1166,
+                  "lowest_selection_rate": 0.14150943396226415,
+                  "lowest_selection_rate_ci": [
+                    0.12267855895260849,
+                    0.16269477706142965
+                  ]
                 }
               ],
-              "mitigation_attribute": "age_band"
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "loan_intent",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
+            },
+            "guardrail_tuning": {
+              "disparate_impact_floor": 0.8,
+              "passed": false,
+              "n_breaches": 4,
+              "breaches": [
+                {
+                  "attribute": "person_home_ownership",
+                  "label": "Home ownership",
+                  "disparate_impact_ratio": 0.411582557861346,
+                  "disparate_impact_ratio_ci": [
+                    0.38828822164761456,
+                    0.4324209062420819
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "RENT",
+                  "lowest_group_n": 3286,
+                  "lowest_selection_rate": 0.36944613511868535,
+                  "lowest_selection_rate_ci": [
+                    0.3531046685404241,
+                    0.38609250131723716
+                  ]
+                },
+                {
+                  "attribute": "income_band",
+                  "label": "Income band",
+                  "disparate_impact_ratio": 0.7171918315930194,
+                  "disparate_impact_ratio_ci": [
+                    0.6739599436374398,
+                    0.7704729354258465
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "low",
+                  "lowest_group_n": 2156,
+                  "lowest_selection_rate": 0.37940630797773656,
+                  "lowest_selection_rate_ci": [
+                    0.3591551808628071,
+                    0.40008642278071943
+                  ]
+                },
+                {
+                  "attribute": "loan_intent",
+                  "label": "Loan purpose",
+                  "disparate_impact_ratio": 0.4433831099224164,
+                  "disparate_impact_ratio_ci": [
+                    0.3945345234441387,
+                    0.4986186181538415
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "HOMEIMPROVEMENT",
+                  "lowest_group_n": 722,
+                  "lowest_selection_rate": 0.31024930747922436,
+                  "lowest_selection_rate_ci": [
+                    0.27758460862569656,
+                    0.3449225609826587
+                  ]
+                },
+                {
+                  "attribute": "cb_person_default_on_file",
+                  "label": "Prior default on file",
+                  "disparate_impact_ratio": 0.29638112293713076,
+                  "disparate_impact_ratio_ci": [
+                    0.25265427148962066,
+                    0.3418439751588724
+                  ],
+                  "floor": 0.8,
+                  "lowest_group": "Y",
+                  "lowest_group_n": 1122,
+                  "lowest_selection_rate": 0.15418894830659535,
+                  "lowest_selection_rate_ci": [
+                    0.13424089171092432,
+                    0.1764969598660648
+                  ]
+                }
+              ],
+              "breaching_attributes": [
+                "person_home_ownership",
+                "income_band",
+                "loan_intent",
+                "cb_person_default_on_file"
+              ],
+              "mitigation_attribute": "age_band",
+              "interpretation": "A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes."
             }
           }
         }
@@ -724,13 +1369,13 @@
   "lineage": [
     {
       "version": "trustscore-1.0.0",
-      "trained_at": "2026-10-17T13:32:53.601837+00:00",
+      "trained_at": "2026-10-17T14:56:17.092804+00:00",
       "role": "baseline",
       "note": "Calibrated LightGBM + cost-optimal policy."
     },
     {
       "version": "trustscore-1.1.0",
-      "trained_at": "2026-10-17T13:32:53.601837+00:00",
+      "trained_at": "2026-10-17T14:56:17.092804+00:00",
       "role": "fair",
       "parent": "trustscore-1.0.0",
       "note": "Adds equalized-odds post-processing on loan_intent (default)."

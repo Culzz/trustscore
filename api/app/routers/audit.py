@@ -104,6 +104,9 @@ def portfolio_summary() -> dict:
     }
     return {
         "n": portfolio.get("n"),
+        "set": portfolio.get("set", "validation"),
+        "role": portfolio.get("role", "policy_tuning"),
+        "row_key_prefix": portfolio.get("row_key_prefix"),
         "group_attribute": portfolio.get("group_attribute"),
         "attributes": available_attributes(portfolio),
         "group_values": levels,
@@ -120,6 +123,7 @@ def mitigation() -> dict:
         "default_attribute": registry.default_mitigation_attribute(),
         "variant_summaries": registry.variant_summaries(),
         "disparate_impact_floor": registry.disparate_impact_floor(),
+        "evaluation_protocol": registry.evaluation_protocol(),
     }
 
 
@@ -175,16 +179,58 @@ def policy_simulate(payload: PolicySimulationRequest) -> dict:
                 loss_given_default=payload.loss_given_default,
                 attribute=attribute,
             )
+
+        # With mitigation on, also measure what it *cost*: the same policy without
+        # it. Auditors should see the trade-off, not just the improved ratio.
+        if payload.apply_fairness:
+            baseline = simulate(
+                portfolio,
+                am,
+                dm,
+                costs=costs,
+                apply_fairness=False,
+                floor=registry.disparate_impact_floor(),
+                margin_rate=payload.margin_rate,
+                loss_given_default=payload.loss_given_default,
+                attribute=attribute,
+                with_ci=False,
+            )
+            result["mitigation_cost"] = {
+                "cost_per_loan_delta": (
+                    result["realized_cost_per_loan"] - baseline["realized_cost_per_loan"]
+                ),
+                "approval_rate_delta": result["approval_rate"] - baseline["approval_rate"],
+                "profit_per_loan_delta": (
+                    result["profit_per_loan"] - baseline["profit_per_loan"]
+                ),
+                "disparate_impact_ratio_base": baseline["disparate_impact_ratio"],
+                "disparate_impact_ratio_mitigated": result["disparate_impact_ratio"],
+                "equalized_odds_difference_base": baseline["equalized_odds_difference"],
+                "equalized_odds_difference_mitigated": result["equalized_odds_difference"],
+                "breaches_base": baseline["guardrail"]["n_breaches"],
+                "breaches_mitigated": result["guardrail"]["n_breaches"],
+                "note": (
+                    "Measured on the policy tuning set (validation). The model card "
+                    "quotes the same intervention measured on the held-out test split."
+                ),
+            }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     result["context"] = macro_context("national")
+    breaches = result["guardrail"].get("breaches") or []
     result["intercept"] = {
         "save_policy_allowed": result["guardrail"]["passed"],
         "reason": (
-            "Guardrail satisfied."
+            "Guardrail satisfied for the audited attribute."
             if result["guardrail"]["passed"]
-            else "Disparate-impact floor breached: policy changes cannot be saved."
+            else (
+                "Blocked: "
+                + ", ".join(b["label"] for b in breaches)
+                + " below the four-fifths floor"
+                if breaches
+                else "Blocked: the fairness guardrail is breached."
+            )
         ),
         "floor": registry.disparate_impact_floor(),
     }

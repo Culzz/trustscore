@@ -44,6 +44,7 @@ DRIFT_JSON = REPORTS_DIR / "drift_v1.json"
 METRICS_JSON = REPORTS_DIR / "metrics_v1.json"
 MODEL_CARD_MD = REPORTS_DIR / "MODEL_CARD.md"
 MODEL_CARD_JSON = REPORTS_DIR / "model_card_v1.json"
+EVALUATION_MD = REPORTS_DIR / "EVALUATION.md"
 CALIBRATION_JSON = REPORTS_DIR / "calibration_v1.json"
 
 # ---------------------------------------------------------------------------

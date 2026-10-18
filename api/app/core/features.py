@@ -82,12 +82,19 @@ AGE_BANDS = [
 MITIGATION_ATTRIBUTE = "age_band"
 
 # Row keys for the *deterministic* randomised tie-break in equalized-odds
-# post-processing (see services/mitigation.py). The offline evaluation and the
-# live portfolio simulator must use the same key for a row, otherwise the
-# randomised decisions -- and therefore the reported disparate-impact ratio --
-# differ between the model card and the auditor console. The portfolio artifact
-# records this prefix so the runtime can never drift from training.
-PORTFOLIO_KEY_PREFIX = "test"
+# post-processing (see services/mitigation.py).
+#
+# Evaluation protocol (docs/EVALUATION.md):
+#   * The auditor console experiments on the **policy tuning set** (the
+#     validation split); its rows are keyed with ``TUNING_KEY_PREFIX``.
+#   * The model card and the evaluation report quote the **final held-out test
+#     set**, keyed with ``FINAL_EVAL_KEY_PREFIX``.
+# The shipped portfolio artifact records its own prefix, so the runtime can never
+# drift from the offline measurement *of the same set*.
+TUNING_KEY_PREFIX = "tuning"
+FINAL_EVAL_KEY_PREFIX = "test"
+# The shipped portfolio is the tuning set; kept as the historical name.
+PORTFOLIO_KEY_PREFIX = TUNING_KEY_PREFIX
 
 
 def age_band(age) -> str:
@@ -139,20 +146,22 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _normalise_categoricals(df: pd.DataFrame) -> pd.DataFrame:
+def _normalise_categoricals(df: pd.DataFrame, categorical=None) -> pd.DataFrame:
     """Make categorical columns string/NaN friendly."""
+    cols = list(categorical) if categorical is not None else CATEGORICAL_FEATURES
     df = df.copy()
-    for col in CATEGORICAL_FEATURES:
+    for col in cols:
         s = df[col].astype("object")
         s[s.isna()] = np.nan
         df[col] = s
     return df
 
 
-def feature_matrix(df: pd.DataFrame) -> pd.DataFrame:
+def feature_matrix(df: pd.DataFrame, features=None, categorical=None) -> pd.DataFrame:
     """Select and normalise the model input columns in a stable order."""
-    df = _normalise_categoricals(df)
-    return df[MODEL_FEATURES].copy()
+    cols = list(features) if features is not None else MODEL_FEATURES
+    df = _normalise_categoricals(df, categorical)
+    return df[cols].copy()
 
 
 # ---------------------------------------------------------------------------
@@ -170,7 +179,15 @@ class TabularPreprocessor:
     ``verbose_feature_names_out=False``, so the two are interchangeable.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, numeric=None, categorical=None) -> None:
+        # The feature lists are per-instance so training can build a *reduced*
+        # preprocessor for the feature-provenance ablation (see train.py).
+        self.numeric: list[str] = (
+            list(numeric) if numeric is not None else list(NUMERIC_FEATURES)
+        )
+        self.categorical: list[str] = (
+            list(categorical) if categorical is not None else list(CATEGORICAL_FEATURES)
+        )
         self.numeric_medians_: dict[str, float] = {}
         self.cat_fill_: dict[str, str] = {}
         self.cat_categories_: dict[str, list[str]] = {}
@@ -178,14 +195,17 @@ class TabularPreprocessor:
         self.scaler_scale_: np.ndarray | None = None
         self.feature_names_out_: list[str] = []
 
+    def _features(self) -> list[str]:
+        return self.numeric + self.categorical
+
     # -- fit ---------------------------------------------------------------
     def fit(self, df: pd.DataFrame) -> "TabularPreprocessor":
-        X = feature_matrix(df)
+        X = feature_matrix(df, self._features(), self.categorical)
 
         # Numerics: median then mean/std.
         self.numeric_medians_ = {}
-        num = np.empty((len(X), len(NUMERIC_FEATURES)), dtype=float)
-        for j, col in enumerate(NUMERIC_FEATURES):
+        num = np.empty((len(X), len(self.numeric)), dtype=float)
+        for j, col in enumerate(self.numeric):
             values = pd.to_numeric(X[col], errors="coerce")
             median = float(values.median())
             if not np.isfinite(median):
@@ -201,7 +221,7 @@ class TabularPreprocessor:
         # Categories: most frequent fill, sorted unique values.
         self.cat_fill_ = {}
         self.cat_categories_ = {}
-        for col in CATEGORICAL_FEATURES:
+        for col in self.categorical:
             s = X[col]
             mode = s.mode()
             fill = str(mode.iloc[0]) if len(mode) else "UNKNOWN"
@@ -209,9 +229,9 @@ class TabularPreprocessor:
             categories = sorted({str(v) for v in s.dropna().unique()})
             self.cat_categories_[col] = categories
 
-        self.feature_names_out_ = list(NUMERIC_FEATURES) + [
+        self.feature_names_out_ = list(self.numeric) + [
             f"{col}_{value}"
-            for col in CATEGORICAL_FEATURES
+            for col in self.categorical
             for value in self.cat_categories_[col]
         ]
         return self
@@ -220,16 +240,16 @@ class TabularPreprocessor:
     def transform(self, df: pd.DataFrame) -> np.ndarray:
         if self.scaler_mean_ is None:
             raise RuntimeError("TabularPreprocessor must be fitted before transform")
-        X = feature_matrix(df)
+        X = feature_matrix(df, self._features(), self.categorical)
 
-        num = np.empty((len(X), len(NUMERIC_FEATURES)), dtype=float)
-        for j, col in enumerate(NUMERIC_FEATURES):
+        num = np.empty((len(X), len(self.numeric)), dtype=float)
+        for j, col in enumerate(self.numeric):
             values = pd.to_numeric(X[col], errors="coerce")
             num[:, j] = values.fillna(self.numeric_medians_[col]).to_numpy(dtype=float)
         num = (num - self.scaler_mean_) / self.scaler_scale_
 
         cat_blocks = []
-        for col in CATEGORICAL_FEATURES:
+        for col in self.categorical:
             categories = self.cat_categories_[col]
             index = {value: k for k, value in enumerate(categories)}
             block = np.zeros((len(X), len(categories)), dtype=float)

@@ -35,6 +35,22 @@ interface Props {
   floor: number;
 }
 
+/**
+ * Cost figures in the simulator are per unit of loan exposure, so they are small
+ * fractions (e.g. 0.024). Rendering them as money shows "$0"; render them as
+ * cents per $1 of exposure instead, which is what they actually are.
+ */
+function centsOfExposure(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  return `${(value * 100).toFixed(2)}¢`;
+}
+
+function signedCents(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "—";
+  const sign = value > 0 ? "+" : value < 0 ? "−" : "";
+  return `${sign}${(Math.abs(value) * 100).toFixed(2)}¢`;
+}
+
 export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Props) {
   const [approve, setApprove] = useState(defaults.approve_max_pd);
   const [decline, setDecline] = useState(defaults.decline_min_pd);
@@ -101,7 +117,10 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
           </PanelTitle>
           <PanelDescription>
             Move the cut-offs and watch approval rate, cost, profitability and the
-            fairness guardrail for the selected attribute move together.
+            fairness guardrail for the selected attribute move together. This runs on
+            the <span className="text-slate-300">policy tuning set (validation)</span>;
+            the model card reports the separate, held-out test split — tuning-set
+            figures are not the published test figures.
           </PanelDescription>
         </div>
         <div className="flex items-center gap-2">
@@ -230,11 +249,13 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
               <Stat label="Approval rate" value={formatPct(result.approval_rate, 1)} />
               <Stat
                 label="Expected cost / loan"
-                value={formatMoney(result.expected_cost_per_loan)}
+                value={centsOfExposure(result.expected_cost_per_loan)}
+                hint="per $1 of exposure"
               />
               <Stat
                 label="Realized cost / loan"
-                value={formatMoney(result.realized_cost_per_loan)}
+                value={centsOfExposure(result.realized_cost_per_loan)}
+                hint="per $1 of exposure"
               />
               <Stat
                 label="Profit / loan"
@@ -263,6 +284,70 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
               />
             </div>
 
+            {result.uncertainty ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-400">
+                <span>
+                  DI 95% CI:{" "}
+                  <span className="mono text-slate-300">
+                    {result.uncertainty.disparate_impact_ratio_ci
+                      ? `[${result.uncertainty.disparate_impact_ratio_ci[0].toFixed(3)}, ${result.uncertainty.disparate_impact_ratio_ci[1].toFixed(3)}]`
+                      : "n/a"}
+                  </span>
+                </span>
+                <span className="text-slate-600">·</span>
+                <span>
+                  EO gap 95% CI:{" "}
+                  <span className="mono text-slate-300">
+                    {result.uncertainty.equalized_odds_difference_ci
+                      ? `[${result.uncertainty.equalized_odds_difference_ci[0].toFixed(3)}, ${result.uncertainty.equalized_odds_difference_ci[1].toFixed(3)}]`
+                      : "n/a"}
+                  </span>
+                </span>
+                <span className="text-slate-600">·</span>
+                <span>{result.uncertainty.n_boot} bootstrap resamples</span>
+                <span className="text-slate-600">·</span>
+                <span>sampling uncertainty only</span>
+              </div>
+            ) : null}
+
+            {result.mitigation_cost ? (
+              <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-3 text-[11px] text-slate-300">
+                <div className="mb-1 font-medium text-slate-200">
+                  Cost of this mitigation (tuning set)
+                </div>
+                <div className="flex flex-wrap gap-x-4 gap-y-1">
+                  <span>
+                    Realized cost / $1 exposure{" "}
+                    <span
+                      className={cn(
+                        "mono",
+                        result.mitigation_cost.cost_per_loan_delta > 0
+                          ? "text-amber-300"
+                          : "text-emerald-300",
+                      )}
+                    >
+                      {signedCents(result.mitigation_cost.cost_per_loan_delta)}
+                    </span>
+                  </span>
+                  <span>
+                    Approval rate{" "}
+                    <span className="mono">
+                      {result.mitigation_cost.approval_rate_delta >= 0 ? "+" : ""}
+                      {formatPct(result.mitigation_cost.approval_rate_delta, 1)}
+                    </span>
+                  </span>
+                  <span>
+                    Attributes breaching{" "}
+                    <span className="mono">
+                      {result.mitigation_cost.breaches_base} →{" "}
+                      {result.mitigation_cost.breaches_mitigated}
+                    </span>
+                  </span>
+                </div>
+                <p className="mt-1 text-slate-500">{result.mitigation_cost.note}</p>
+              </div>
+            ) : null}
+
             <div
               className={cn(
                 "flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-xs",
@@ -280,7 +365,8 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
               {!saveAllowed
                 ? result.guardrail.breaches.map((b) => (
                     <DarkBadge key={b.attribute} tone="bad">
-                      {b.label} · {b.lowest_group} ·{" "}
+                      {b.label} · {b.lowest_group}
+                      {b.lowest_group_n ? ` (n=${b.lowest_group_n})` : ""} ·{" "}
                       {b.lowest_selection_rate === null
                         ? "—"
                         : formatPct(b.lowest_selection_rate, 1)}
@@ -400,6 +486,12 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
                       <td className="mono py-1.5 pr-3">{row.n}</td>
                       <td className="mono py-1.5 pr-3">
                         {formatPct(row.selection_rate, 1)}
+                        {row.selection_rate_ci ? (
+                          <span className="ml-1 text-slate-500">
+                            [{formatPct(row.selection_rate_ci[0], 0)},{" "}
+                            {formatPct(row.selection_rate_ci[1], 0)}]
+                          </span>
+                        ) : null}
                       </td>
                       <td className="mono py-1.5 pr-3">
                         {row.tpr === null ? "—" : formatPct(row.tpr, 1)}

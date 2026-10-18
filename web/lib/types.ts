@@ -153,14 +153,24 @@ export interface MetricBlock {
   recall: number;
   f1: number;
   confusion_matrix: Record<string, number>;
+  intervals?: {
+    method: string;
+    n_boot: number;
+    roc_auc?: { ci_low: number; ci_high: number };
+    pr_auc?: { ci_low: number; ci_high: number };
+    brier?: { ci_low: number; ci_high: number };
+  };
 }
 
 export interface FairnessGroup {
   group: string;
   n: number;
   selection_rate: number | null;
+  selection_rate_ci?: [number, number] | null;
   tpr: number | null;
+  tpr_ci?: [number, number] | null;
   fpr: number | null;
+  fpr_ci?: [number, number] | null;
   precision: number | null;
   mean_pd: number | null;
   low_sample: boolean;
@@ -172,13 +182,16 @@ export interface FairnessAttribute {
   summary: {
     selection_rate_ratio: number | null;
     disparate_impact_ratio?: number | null;
+    disparate_impact_ratio_ci?: [number, number] | null;
     disparate_impact_pass?: boolean;
     demographic_parity_difference: number | null;
     equal_opportunity_difference: number | null;
     equalized_odds_difference?: number | null;
+    equalized_odds_difference_ci?: [number, number] | null;
     tpr_range?: number | null;
     fpr_range?: number | null;
     n_groups_considered: number;
+    n_groups_total?: number;
   };
 }
 
@@ -253,6 +266,8 @@ export interface RouteMetrics {
 export interface BlueprintRoute {
   id: string;
   kind: string;
+  actionability?: string;
+  guarantees_outcome?: boolean;
   headline: string;
   detail: string;
   metrics: RouteMetrics;
@@ -272,8 +287,16 @@ export interface Blueprint {
   target_band: Band;
   pd_to_approve_threshold?: number;
   routes: BlueprintRoute[];
+  route_summary?: {
+    n_routes: number;
+    n_actionable: number;
+    has_actionable_route: boolean;
+  };
+  actionability_legend?: Record<string, string>;
+  immutable_fields?: { field: string; reason: string }[];
   dual_target: { headline: string; options: DualTargetOption[]; note: string } | null;
   summary: string;
+  no_route_reason?: string | null;
   disclaimer?: string;
   counterfactuals?: CounterfactualScenario[];
 }
@@ -356,12 +379,16 @@ export interface GuardrailResult {
     attribute: string;
     label: string;
     lowest_group: string;
+    lowest_group_n?: number;
     lowest_selection_rate: number | null;
+    disparate_impact_ratio_ci?: [number, number] | null;
   }[];
 }
 
 export interface SimulationResult {
   n: number;
+  evaluation_set?: string;
+  evaluation_role?: string;
   approve_max_pd: number;
   decline_min_pd: number;
   apply_fairness: boolean;
@@ -374,18 +401,39 @@ export interface SimulationResult {
   profit_total: number;
   disparate_impact_ratio: number | null;
   equalized_odds_difference: number | null;
+  uncertainty?: {
+    n_boot: number;
+    method: string;
+    disparate_impact_ratio_ci: [number, number] | null;
+    equalized_odds_difference_ci: [number, number] | null;
+  } | null;
   fairness_table: {
     group: string;
     n: number;
     selection_rate: number;
+    selection_rate_ci?: [number, number] | null;
     tpr: number | null;
+    tpr_ci?: [number, number] | null;
     fpr: number | null;
+    fpr_ci?: [number, number] | null;
     mean_exposure: number;
     low_sample: boolean;
   }[];
   group_attribute: string;
   guardrail: GuardrailResult;
   mitigation_note?: string | null;
+  mitigation_cost?: {
+    cost_per_loan_delta: number;
+    approval_rate_delta: number;
+    profit_per_loan_delta: number;
+    disparate_impact_ratio_base: number | null;
+    disparate_impact_ratio_mitigated: number | null;
+    equalized_odds_difference_base: number | null;
+    equalized_odds_difference_mitigated: number | null;
+    breaches_base: number;
+    breaches_mitigated: number;
+    note: string;
+  } | null;
   sweep?: {
     points: {
       approve_max_pd: number;

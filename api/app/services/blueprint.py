@@ -22,7 +22,33 @@ from .counterfactual import band_rank
 from .decision import APPROVE, DECLINE, REFER, decide
 
 LOAN_AMNT_MIN = 500.0
-INCOME_STEP_MAX = 10.0  # try up to a 10x income increase before giving up
+INCOME_STEP_MAX = 5.0  # never suggest more than a 5x income increase
+
+# The three-way actionability taxonomy the applicant sees. Immutable factors are
+# never suggested; they are listed separately so the applicant can see what was
+# deliberately *not* used against them.
+ACTIONABILITY = {
+    "changeable_by_applicant": "actionable",
+    "potentially_changeable": "potentially_actionable",
+    "milestone": "actionable",
+}
+
+IMMUTABLE_FIELDS = [
+    {"field": "person_age", "reason": "Age cannot be changed and is never suggested."},
+    {"field": "person_home_ownership", "reason": "Housing tenure is a circumstance, not an action."},
+    {"field": "loan_grade", "reason": "Assigned by the lender, not chosen by the applicant."},
+    {"field": "person_emp_length", "reason": "Employment history accrues over time."},
+    {"field": "cb_person_default_on_file", "reason": "A past default cannot be undone."},
+    {"field": "cb_person_cred_hist_length", "reason": "Credit history length accrues over time."},
+    {"field": "loan_int_rate", "reason": "Set by the lender."},
+    {"field": "person_income", "reason": "Informational only; never the headline suggestion."},
+]
+
+ACTIONABILITY_LEGEND = {
+    "actionable": "A change the applicant can make directly before applying.",
+    "potentially_actionable": "A change that depends on the applicant's real circumstances.",
+    "immutable": "Cannot be changed; shown only so it is clear what was not used.",
+}
 
 
 def _variant(row: dict, **changes) -> dict:
@@ -102,15 +128,18 @@ def _income_for_target(
     current = float(row.get("person_income") or 0)
     if current <= 0:
         return None
+    cap = current * INCOME_STEP_MAX
     hi = current
     found: tuple[float, float, str] | None = None
     for _ in range(8):
-        hi *= 1.6
+        hi = min(hi * 1.6, cap)
         pd = float(predict_fn(_variant(row, person_income=hi)))
         band = decide(pd, approve_max_pd, decline_min_pd)
         if band_rank(band) <= target_rank:
             found = (hi, pd, band)
             break
+        if hi >= cap:
+            break  # outside a plausible range; do not suggest it
     if found is None:
         return None
     lo = current
@@ -303,7 +332,12 @@ def build_blueprint(
             ),
         }
 
+    for route in routes:
+        route["actionability"] = ACTIONABILITY.get(route["kind"], "actionable")
+        route["guarantees_outcome"] = False
+
     routes.sort(key=lambda r: (band_rank(r["metrics"]["new_band"]), r["metrics"]["new_pd"]))
+    actionable_routes = [r for r in routes if r["actionability"] == "actionable"]
 
     return {
         "status": "actionable" if routes else "blocked",
@@ -315,6 +349,13 @@ def build_blueprint(
         ),
         "headroom_if_approved": None,
         "routes": routes,
+        "route_summary": {
+            "n_routes": len(routes),
+            "n_actionable": len(actionable_routes),
+            "has_actionable_route": bool(actionable_routes),
+        },
+        "actionability_legend": ACTIONABILITY_LEGEND,
+        "immutable_fields": IMMUTABLE_FIELDS,
         "dual_target": dual,
         "summary": (
             "Each route below is a change the applicant can consider. They are "
@@ -323,8 +364,17 @@ def build_blueprint(
             else "Under the current criteria the model finds no feasible change "
             "from the applicant-controlled fields."
         ),
+        "no_route_reason": None
+        if routes
+        else (
+            "No change to the fields an applicant controls (requested amount, loan "
+            "purpose) moved this application into a better band within a plausible "
+            "range. This is a statement about the simulated model, not a prediction "
+            "of how any real lender would decide."
+        ),
         "disclaimer": (
-            "Scenarios are model-generated and are not guaranteed approval "
-            "conditions. Approval also depends on information not shown here."
+            "Scenarios are model-generated estimates, not promises. They do not "
+            "guarantee an approval, and no real lender has agreed to them. "
+            "Approval also depends on information not shown here."
         ),
     }

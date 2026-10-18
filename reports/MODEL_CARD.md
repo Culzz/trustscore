@@ -1,6 +1,6 @@
 # Model Card — TrustScore (`trustscore-1.0.0`)
 
-_Generated 2026-10-17T13:32:53.601837+00:00 by `python -m training.src.train`._
+_Generated 2026-10-17T14:56:17.092804+00:00 by `python -m training.src.train`._
 
 > TrustScore is a demonstration of responsible-AI credit decisioning. It is not a real lending tool, not financial advice, and not a loan offer. Decisions shown are simulated.
 
@@ -31,6 +31,17 @@ TrustScore estimates the probability that a loan applicant defaults, turns that 
 - Loan amounts out of range: 0 set to missing
 - Remaining missing values (imputed in-pipeline): person_age (5), person_emp_length (889), loan_int_rate (3,095)
 
+## Evaluation protocol
+
+Three disjoint sets are used. Every number in this card states which set it comes from:
+
+- **train** — fit booster + cross-fitted isotonic calibration + equalized-odds mitigation
+- **validation** — policy verification and the interactive auditor *policy tuning* set
+- **test** — one-time held-out final evaluation (model card, evaluation report)
+
+- The auditor console runs **only** on the policy tuning set (`validation`, n=6,483). Row-level data for the final evaluation set (`test`, n=6,484) is deliberately not shipped, so it stays held out. Tuning-set figures are therefore *not* the published test figures.
+- Equalized-odds mitigation is fitted on train (out-of-fold calibrated scores) and measured on test (headline), validation (console/tuning).
+
 ## Performance (test split)
 
 | Model | ROC-AUC | PR-AUC | Brier |
@@ -40,6 +51,8 @@ TrustScore estimates the probability that a loan applicant defaults, turns that 
 | LightGBM (calibrated) | 0.9490 | 0.8984 | 0.0527 |
 
 At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall 0.7313, F1 0.8293.
+
+95% bootstrap confidence intervals (test split, 400 resamples of the applicants): ROC-AUC [0.9413, 0.9559], PR-AUC [0.8847, 0.9113], Brier [0.0483, 0.0571]. These capture sampling noise only — not dataset shift, label noise or model-selection uncertainty.
 
 ## Calibration
 
@@ -55,11 +68,18 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 | False decline (decline a good applicant) | 0.2 |
 | Manual review | 0.05 |
 
-- Approve band: PD ≤ **0.0553**
-- Refer band: 0.0553 < PD < 0.6762
-- Decline band: PD ≥ **0.6762**
+The band thresholds are derived **analytically** from the cost matrix: for each applicant the policy picks the cheapest of approve / refer / decline, which yields two crossover points.
+
+- Approve → refer at PD = review ÷ false_approve = **0.05000**
+- Refer → decline at PD = 1 − review ÷ false_decline = **0.75000**
+
+- Deployed approve band: PD ≤ **0.05000**
+- Deployed refer band: 0.05000 < PD < 0.75000
+- Deployed decline band: PD ≥ **0.75000**
+- **Verification.** An independent brute-force grid search over the validation split found approve ≤ 0.05534 / decline ≥ 0.67619 at a cost 0.00000000 above the analytic policy — i.e. cost-identical. The expected-cost surface is flat across a gap in the score distribution, so the grid point is an arbitrary member of a plateau while the analytic crossover is the exact per-applicant optimum. Analytic-is-cost-optimal: **True**.
 - Expected cost per loan at these thresholds (validation): **0.0266** exposure-weighted cost units
-- Thresholds are configurable in the lender view.
+- Test approval rate: **0.4528** (bands: {'approve': 2936, 'refer': 2536, 'decline': 1012})
+- Thresholds are configurable in the auditor view.
 
 ## Fairness
 
@@ -79,6 +99,9 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Equal opportunity difference (TPR gap): 0.4889
 - Equalized odds difference (max TPR/FPR gap): 0.4889
 - Disparate-impact ratio (four-fifths rule): **0.3750** [BREACH vs floor 0.8000]
+- Disparate-impact 95% bootstrap CI: [0.3548, 0.3999]
+- Equalized-odds 95% bootstrap CI: [0.4620, 0.5168]
+- Groups used in the ratios: 3 of 4 (smaller groups are shown but excluded).
 
 ### Age band
 
@@ -97,6 +120,9 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Equal opportunity difference (TPR gap): 0.0950
 - Equalized odds difference (max TPR/FPR gap): 0.0950
 - Disparate-impact ratio (four-fifths rule): **0.8439** [PASS vs floor 0.8000]
+- Disparate-impact 95% bootstrap CI: [0.7116, 0.9047]
+- Equalized-odds 95% bootstrap CI: [0.0562, 0.1925]
+- Groups used in the ratios: 4 of 7 (smaller groups are shown but excluded).
 
 ### Income band
 
@@ -112,6 +138,9 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Equal opportunity difference (TPR gap): 0.3286
 - Equalized odds difference (max TPR/FPR gap): 0.3286
 - Disparate-impact ratio (four-fifths rule): **0.3797** [BREACH vs floor 0.8000]
+- Disparate-impact 95% bootstrap CI: [0.3496, 0.4142]
+- Equalized-odds 95% bootstrap CI: [0.2868, 0.3671]
+- Groups used in the ratios: 4 of 4 (smaller groups are shown but excluded).
 
 ### Loan purpose
 
@@ -129,6 +158,9 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Equal opportunity difference (TPR gap): 0.3015
 - Equalized odds difference (max TPR/FPR gap): 0.3015
 - Disparate-impact ratio (four-fifths rule): **0.5457** [BREACH vs floor 0.8000]
+- Disparate-impact 95% bootstrap CI: [0.4872, 0.5751]
+- Equalized-odds 95% bootstrap CI: [0.2632, 0.3541]
+- Groups used in the ratios: 6 of 6 (smaller groups are shown but excluded).
 
 ### Prior default on file
 
@@ -142,6 +174,9 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Equal opportunity difference (TPR gap): 0.4114
 - Equalized odds difference (max TPR/FPR gap): 0.4114
 - Disparate-impact ratio (four-fifths rule): **0.2698** [BREACH vs floor 0.8000]
+- Disparate-impact 95% bootstrap CI: [0.2333, 0.3114]
+- Equalized-odds 95% bootstrap CI: [0.3767, 0.4449]
+- Groups used in the ratios: 2 of 2 (smaller groups are shown but excluded).
 
 **Not available in this dataset (reported honestly, not estimated):** gender, race/ethnicity, geography/region, marital status, disability status.
 
@@ -150,21 +185,65 @@ At a 0.50 rounding threshold the calibrated model gives precision 0.9575, recall
 - Disparate-impact floor: **0.8000**
 - Status: **BREACH** (4 attribute(s) below the floor)
 
+| Breaching attribute | Lowest group (n) | Selection rate | DI ratio | DI 95% CI |
+| --- | --- | --- | --- | --- |
+| Home ownership | RENT (3,339) | 0.3339 | 0.3750 | [0.3548, 0.3999] |
+| Income band | low (2,139) | 0.2613 | 0.3797 | [0.3496, 0.4142] |
+| Loan purpose | DEBTCONSOLIDATION (1,012) | 0.3656 | 0.5457 | [0.4872, 0.5751] |
+| Prior default on file | Y (1,166) | 0.1407 | 0.2698 | [0.2333, 0.3114] |
+
+> A ratio at or above the floor for one attribute is not evidence that the system is fair overall, and it is not a legal-compliance finding. Every remaining breach is listed here and must be read together with its confidence interval and its group sizes.
+
 ## Fairness mitigation (equalized odds)
 
-The fairness-tuned model (**Beta**, `trustscore-1.1.0`) keeps the same booster and appends a *post-processing* rule: per-group randomised probability thresholds that equalise the true-positive and false-positive rates across age bands.
+The fairness-tuned model (**Beta**, `trustscore-1.1.0`) keeps the same booster and appends a *post-processing* decision rule: per-group randomised probability thresholds chosen so that the true-positive and false-positive rates line up across the groups of one attribute.
 
 - Method: **equalized_odds**
 - Attribute: `loan_intent`
-- Target TPR / FPR: 0.5846 / 0.0310
-- Base approve threshold: 0.0553
+- Target TPR / FPR: 0.5838 / 0.0386
+- Base approve threshold: 0.0500
+- Fitted on: train (out-of-fold calibrated scores) (min group size 50)
+- Measured on: test (headline, below) and validation (console)
+
+**Final evaluation (held-out test split)**
 
 | Metric | Baseline | After mitigation |
 | --- | --- | --- |
-| Approval rate | 0.453 | 0.457 |
-| Realized cost per loan | 0.0264 | 0.0276 |
-| Disparate-impact ratio | 0.5457 | 0.8427 |
+| Approval rate | 0.453 | 0.455 |
+| Realized cost per loan | 0.0264 | 0.0277 |
+| Disparate-impact ratio | 0.5457 | 0.8588 |
 | Equalized odds difference | 0.3015 | 0.0664 |
+| Attributes breaching the floor | 4 | 3 |
+
+The measured cost of this intervention is **0.001332** additional realized cost per unit of exposure on the held-out test split.
+
+**Policy tuning set (validation, what the auditor console shows):** DI 0.5199 → 0.8487; EO gap 0.3350 → 0.0893; breaches 4 → 3.
+
+> **Caveat.** Mitigation is an experimental policy intervention, not a fairness guarantee and not a compliance finding. Even with it enabled, 3 attribute(s) remain below the floor (Home ownership, Income band, Prior default on file). Clearing one attribute says nothing about the others, and every figure above is sensitive to the dataset, the group definitions, group sizes, the cost matrix and the metric chosen.
+
+## Feature provenance and ablation
+
+The dataset's `loan_grade` and `loan_int_rate` are **lender-assigned** fields: they already encode an underwriting judgement made at origination. A model that uses them may be partly reproducing the lender's own risk tiering rather than predicting independently. To quantify that, a second model was trained on the same split with those fields removed.
+
+| Model | ROC-AUC | PR-AUC | Brier |
+| --- | --- | --- | --- |
+| Full feature set | 0.9495 | 0.9064 | 0.0527 |
+| Without `loan_grade`, `loan_int_rate` | 0.9031 | 0.8202 | 0.0818 |
+
+Removing the lender-assigned fields costs **0.0464 ROC-AUC** — that gap is the part of the headline performance that came from reproducing the lender's own decision, and it is the honest expectation for a system that must score applicants the lender has not already judged.
+
+> Both rows are uncalibrated and evaluated on the same test split, so the delta is like-for-like. It measures how much of the headline ranking skill came from reproducing the lender's own risk tiering; a system that must score applicants the lender has not already judged should expect the lower number.
+
+## Robustness: out-of-population check
+
+The dataset has no timestamp, so a temporal split is not possible. Holding out an entire income segment is the closest available proxy: it shows how ranking skill changes on applicants drawn from a part of the population the model never trained on. The random stratified split used for the headline metrics does not capture this.
+
+| Evaluation | ROC-AUC | PR-AUC |
+| --- | --- | --- |
+| In-population (held-out slice of the modelled segment, n=5,190) | 0.9568 | 0.9255 |
+| Out-of-population (top income quintile (person_income > q80), n=6,464) | 0.8826 | 0.7168 |
+
+Ranking skill drops by **0.0743 ROC-AUC** on the held-out population. The headline test metrics come from a random stratified split, which shares the training distribution; they are not a forecast of performance on future or different applicants.
 
 ## Most influential features
 
@@ -192,6 +271,9 @@ The fairness-tuned model (**Beta**, `trustscore-1.1.0`) keeps the same booster a
 - Performance monitoring is offline/simulated: the public dataset has no live outcome stream.
 - Deployment targets a serverless environment, so the production model is kept deliberately light (LightGBM only; no SHAP library at runtime).
 - The measured ROC-AUC is optimistic for a real credit setting: the dataset's loan grade and interest rate are lender-assigned fields that already encode an underwriting judgement, so part of the model's skill is reproducing the lender's own risk tiering rather than independent prediction.
+- All headline metrics come from a single random stratified split of one public dataset. A random split measures performance on a similar distribution; it does not establish performance on future applicants or on a different population. The out-of-population check in this card exists precisely because the random split hides the difference.
+- The auditor console runs only on the validation (policy tuning) split. Its live figures are therefore not the published test figures, and it must not be used to select a policy on the basis of test-set performance.
+- Fairness mitigation is an experimental policy intervention, not a fairness guarantee and not a legal-compliance finding. It targets one attribute at a time; other audited attributes can and do remain below the four-fifths floor with it enabled.
 
 ## Ethical considerations
 

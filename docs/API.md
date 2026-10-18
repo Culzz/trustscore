@@ -40,7 +40,7 @@ Every response in this API is a **simulation**. Nothing is a loan offer.
 | GET | `/registry` | Raw registry (group definitions, mitigation parameters) |
 | GET | `/mitigation` | Mitigation options, per-attribute variants and their measured impact |
 | GET | `/context` | Macro feature-store context for a region (`?region=`) |
-| GET | `/portfolio` | The public portfolio (full test split) the audit tools run on |
+| GET | `/portfolio` | The policy tuning set (public validation split) the audit tools run on |
 | POST | `/policy/simulate` | Cut-offs → approval rate, cost, profit, fairness, sweep curve |
 | POST | `/ab/compare` | Alpha vs Beta on the same portfolio at the same policy |
 | POST | `/bias/inject` | Adversarially skew one group and test the controls |
@@ -97,7 +97,7 @@ curl -s http://localhost:8000/predict \
   "probability_of_default": 0.43,
   "band": "refer",
   "band_label": "medium",
-  "thresholds": { "approve_max_pd": 0.055, "decline_min_pd": 0.676 },
+  "thresholds": { "approve_max_pd": 0.05, "decline_min_pd": 0.75 },
   "created_at": "…",
   "disclaimer": "…"
 }
@@ -176,38 +176,56 @@ events are identical on both paths.
 # Apply a policy and get KPIs + the fairness guardrail
 curl -s -X POST http://localhost:8000/policy/simulate \
   -H 'Content-Type: application/json' \
-  -d '{"approve_max_pd":0.055,"decline_min_pd":0.676,"include_sweep":true,
+  -d '{"approve_max_pd":0.05,"decline_min_pd":0.75,"include_sweep":true,
        "apply_fairness":true,"mitigation_attribute":"loan_intent"}'
 ```
 
 ```json
 {
+  "evaluation_set": "validation",
+  "evaluation_role": "policy_tuning",
   "group_attribute": "loan_intent",
   "approval_rate": 0.4568, "expected_cost_per_loan": 0.024,
   "realized_cost_per_loan": 0.0276, "profit_per_loan": 4.1,
   "disparate_impact_ratio": 0.8427, "equalized_odds_difference": 0.0664,
+  "uncertainty": {
+    "method": "nonparametric bootstrap over applicants",
+    "n_boot": 400,
+    "disparate_impact_ratio_ci": [0.79, 0.90],
+    "equalized_odds_difference_ci": [0.04, 0.10]
+  },
   "fairness_table": [ { "group": "…", "n": 1059, "selection_rate": 0.45,
-                        "tpr": 0.52, "fpr": 0.019, "low_sample": false } ],
+                        "selection_rate_ci": [0.42, 0.48],
+                        "tpr": 0.52, "tpr_ci": [0.47, 0.57],
+                        "fpr": 0.019, "low_sample": false } ],
   "guardrail": { "disparate_impact_floor": 0.8, "passed": true, "n_breaches": 0,
                  "breaches": [] },
+  "mitigation_cost": {
+    "cost_per_loan_delta": 0.0006, "approval_rate_delta": -0.004,
+    "breaches_base": 1, "breaches_mitigated": 0,
+    "note": "Measured on the policy tuning set (validation). The model card quotes the same intervention measured on the held-out test split."
+  },
   "sweep": { "points": [ { "approve_max_pd": 0.02, "approval_rate": 0.18,
                            "disparate_impact_ratio": 0.71, "profit_per_loan": 1.2 } ] },
-  "intercept": { "save_policy_allowed": true, "reason": "Guardrail satisfied.",
+  "intercept": { "save_policy_allowed": true,
+                 "reason": "Guardrail satisfied for the audited attribute.",
                  "floor": 0.8 }
 }
 ```
 
 The guardrail, the disparate-impact ratio and the fairness table all refer to the
 **attribute under audit** (`mitigation_attribute`, defaulting to the registry's
-chosen variant, `loan_intent`). The same request without `apply_fairness` returns
-the raw policy: `disparate_impact_ratio` `0.5457`, `n_breaches` `1` (lowest group
-`DEBTCONSOLIDATION` at a 36.6% selection rate) and
-`save_policy_allowed: false`. These figures are computed on the full public test
-split with the training tie-break keys, so they reproduce the model card exactly.
+chosen variant). **All of these figures are the policy tuning set (validation
+split).** They are not the published test figures, which live in `/model` and the
+model card, and they are expected to differ. The response says so explicitly via
+`evaluation_set` / `evaluation_role`. When `apply_fairness` is on, the response also
+carries `mitigation_cost`, the measured price of the intervention (cost per loan,
+approval change, and how many attributes still breach) rather than only the ratio
+it improved.
 
 * `GET /portfolio` →
-  `{n, group_attribute, attributes[], group_values{attribute: [labels]}, fields, note}`
-  — the audit portfolio (the full public test split, scores stored verbatim).
+  `{n, set, role, row_key_prefix, group_attribute, attributes[], group_values{attribute: [labels]}, fields, note}`
+  — the policy tuning set (validation split, `n` ≈ 6,483, scores stored verbatim).
 * `POST /ab/compare` → `{alpha, beta, delta, labels}` (same portfolio, same policy;
   only the mitigation differs).
 * `POST /bias/inject` → `{injection, clean, biased, recovered}`; the injected

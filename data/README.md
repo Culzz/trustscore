@@ -50,5 +50,8 @@ pip install -r training/requirements.txt
 python -m training.src.train
 ```
 
-This rewrites `api/artifacts/model.joblib`, `api/artifacts/metadata.json` and the
-`reports/*.json` files, plus `reports/MODEL_CARD.md`.
+This rewrites `api/artifacts/*` and the `reports/*.json` files, plus
+`reports/MODEL_CARD.md` and `reports/EVALUATION.md`. The split is a three-way
+fit / tune / report partition; the validation slice is what ships as the audit
+*policy tuning set* (`api/artifacts/portfolio.json`) and the test slice is never
+shipped. See [`docs/EVALUATION.md`](../docs/EVALUATION.md).

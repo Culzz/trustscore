@@ -74,6 +74,11 @@ def disparate_impact_floor() -> float:
     return float(load_registry().get("disparate_impact_floor", 0.80))
 
 
+def evaluation_protocol() -> dict:
+    """The train/validation/test role split recorded by training."""
+    return dict(load_registry().get("evaluation_protocol") or {})
+
+
 def list_models() -> list[dict]:
     return list(load_registry().get("models", []))
 
@@ -163,6 +168,7 @@ def variant_summaries(version: str | None = None) -> dict:
             "label": TIER3_ATTRIBUTE_LABELS.get(attr, attr),
             "summary": block.get("summary"),
             "impact": block.get("impact"),
+            "impact_tuning": block.get("impact_tuning"),
         }
     return out
 
@@ -178,4 +184,5 @@ def registry_summary() -> dict:
         "mitigation_attributes": mitigation_attributes(),
         "n_models": len(list_models()),
         "generated_at": reg.get("generated_at"),
+        "evaluation_protocol": evaluation_protocol(),
     }

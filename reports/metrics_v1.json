@@ -42,6 +42,26 @@
       "false_positive": 46,
       "false_negative": 381,
       "true_positive": 1037
+    },
+    "intervals": {
+      "method": "percentile bootstrap (resampling applicants with replacement)",
+      "n_boot": 400,
+      "seed": 42,
+      "roc_auc": {
+        "ci_low": 0.9413002645891846,
+        "ci_high": 0.9558954940582132,
+        "n_boot_used": 400
+      },
+      "pr_auc": {
+        "ci_low": 0.8846568163674111,
+        "ci_high": 0.9113133833738244,
+        "n_boot_used": 400
+      },
+      "brier": {
+        "ci_low": 0.048314655136219506,
+        "ci_high": 0.05710170847822782,
+        "n_boot_used": 400
+      }
     }
   }
 }

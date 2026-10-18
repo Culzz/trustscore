@@ -39,8 +39,13 @@ def stratified_split(
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Return (train, validation, test) at 60/20/20, stratified on the target.
 
-    The validation split chooses the decision thresholds; the test split is
-    touched once, at the end, so the reported numbers stay honest.
+    Role split (see ``docs/EVALUATION.md``):
+
+    * **train** — fits the booster, the cross-fitted isotonic calibration and the
+      equalized-odds mitigation.
+    * **validation** — verifies/tunes the decision policy and is the interactive
+      *policy tuning set* the auditor console reads.
+    * **test** — touched once, at the end, for the published final evaluation.
     """
     train, temp = train_test_split(
         df, test_size=0.40, random_state=seed, stratify=df[config.TARGET]

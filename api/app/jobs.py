@@ -13,6 +13,11 @@ Two execution paths, chosen by ``JOB_BACKEND`` (default ``auto``):
 
 Both paths emit the *same* events, because both call
 ``services.apply_flow.run_application``.
+
+Job state is also mirrored into durable storage (``db.save_job``) when a database
+is configured. Serverless instances are recycled between requests, so an
+in-memory-only job would vanish mid-poll; the durable copy lets ``GET /jobs/{id}``
+still resolve.
 """
 from __future__ import annotations
 
@@ -23,6 +28,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import AsyncIterator
 
+from . import db
 from .core.config import get_settings
 
 # ---------------------------------------------------------------------------
@@ -63,14 +69,19 @@ def create_job(kind: str, payload: dict) -> str:
         "_ts": time.time(),
     }
     _prune()
+    db.save_job(_JOBS[job_id])
     return job_id
 
 
 def get_job(job_id: str) -> dict | None:
     job = _JOBS.get(job_id)
     if job is None:
-        return None
-    return {k: v for k, v in job.items() if not k.startswith("_")}
+        # Memory may have been recycled between serverless requests; fall back to
+        # the durable record so a poll still resolves.
+        return db.load_job(job_id)
+    out = {k: v for k, v in job.items() if not k.startswith("_")}
+    out.setdefault("durable", db.is_enabled())
+    return out
 
 
 def emit(job_id: str, event: dict) -> None:
@@ -96,6 +107,7 @@ def emit(job_id: str, event: dict) -> None:
             queue.put_nowait(event)
         except Exception:
             pass
+    db.save_job(job)
 
 
 def finish(job_id: str, result: dict) -> None:
@@ -110,6 +122,7 @@ def finish(job_id: str, result: dict) -> None:
         last["result"] = result
         job["status"] = "complete"
         job["updated_at"] = last.get("at") or _now()
+        db.save_job(job)
         return
     emit(
         job_id,
@@ -228,4 +241,12 @@ def bus_stats() -> dict:
         "backend": get_settings().resolved_job_backend,
         "jobs": len(_JOBS),
         "subscribers": sum(len(v) for v in _SUBSCRIBERS.values()),
+        "durable": db.is_enabled(),
+        "note": (
+            "Job state is mirrored to durable storage; polls survive instance "
+            "recycling."
+            if db.is_enabled()
+            else "No database configured: jobs live in memory only and are lost "
+            "if the instance is recycled."
+        ),
     }

@@ -93,6 +93,15 @@ export function RiskDisclosure({
         </p>
       )}
 
+      {revealed ? (
+        <p className="flex items-start gap-1.5 text-[11px] text-slate-400">
+          <Info className="mt-0.5 h-3 w-3 shrink-0" />
+          This is one model estimate and it carries real uncertainty — it is not a
+          precise probability and not a promise of any outcome. A small change in
+          the inputs can move the estimate across a band boundary.
+        </p>
+      ) : null}
+
       <div className="flex gap-1">
         {(["approve", "refer", "decline"] as Band[]).map((b) => (
           <span

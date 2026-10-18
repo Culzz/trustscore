@@ -25,8 +25,21 @@ const KIND_ICON: Record<string, typeof Lightbulb> = {
   milestone: Milestone,
 };
 
+const ACTIONABILITY_STYLE: Record<string, string> = {
+  actionable: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  potentially_actionable: "bg-amber-50 text-amber-700 border-amber-200",
+  immutable: "bg-slate-100 text-slate-600 border-slate-200",
+};
+
+const ACTIONABILITY_LABEL: Record<string, string> = {
+  actionable: "actionable now",
+  potentially_actionable: "potentially actionable",
+  immutable: "immutable",
+};
+
 function RouteRow({ route }: { route: BlueprintRoute }) {
   const Icon = KIND_ICON[route.kind] ?? Lightbulb;
+  const actionability = route.actionability ?? "actionable";
   return (
     <li className="rounded-lg border border-slate-100 bg-slate-50 p-3">
       <div className="flex items-start justify-between gap-3">
@@ -35,6 +48,14 @@ function RouteRow({ route }: { route: BlueprintRoute }) {
           <div>
             <p className="text-sm font-medium text-slate-900">{route.headline}</p>
             <p className="mt-0.5 text-sm text-slate-600">{route.detail}</p>
+            <span
+              className={cn(
+                "mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                ACTIONABILITY_STYLE[actionability] ?? ACTIONABILITY_STYLE.actionable,
+              )}
+            >
+              {ACTIONABILITY_LABEL[actionability] ?? actionability}
+            </span>
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1">
@@ -99,8 +120,8 @@ export function BlueprintCard({ blueprint }: { blueprint: Blueprint }) {
         </ul>
       ) : (
         <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-          No feasible change was found in the applicant-controlled fields under the
-          current policy.
+          {blueprint.no_route_reason ??
+            "No feasible change was found in the applicant-controlled fields under the current policy."}
         </p>
       )}
 
@@ -137,9 +158,24 @@ export function BlueprintCard({ blueprint }: { blueprint: Blueprint }) {
         </div>
       ) : null}
 
+      {blueprint.immutable_fields && blueprint.immutable_fields.length > 0 ? (
+        <details className="rounded-lg border border-slate-100 bg-white p-3">
+          <summary className="cursor-pointer text-xs font-medium text-slate-600">
+            Factors never suggested as changes ({blueprint.immutable_fields.length})
+          </summary>
+          <ul className="mt-2 space-y-1 text-[11px] text-slate-500">
+            {blueprint.immutable_fields.map((f) => (
+              <li key={f.field}>
+                <span className="mono text-slate-600">{f.field}</span> — {f.reason}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
+
       <p className="text-[11px] text-slate-400">
         {blueprint.disclaimer ??
-          "Scenarios are model-generated and are not guaranteed approval conditions."}
+          "Scenarios are model-generated estimates, not promises, and they do not guarantee an approval."}
       </p>
     </div>
   );

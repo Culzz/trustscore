@@ -58,7 +58,15 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
                 <td className="py-2 pr-4 text-right tabular-nums text-slate-600">
                   {g.n.toLocaleString()}
                 </td>
-                <td className="py-2 pr-4 text-right tabular-nums">{formatPct(g.selection_rate)}</td>
+                <td className="py-2 pr-4 text-right tabular-nums">
+                  {formatPct(g.selection_rate)}
+                  {g.selection_rate_ci ? (
+                    <span className="ml-1 text-[10px] text-slate-400">
+                      [{formatPct(g.selection_rate_ci[0], 0)},{" "}
+                      {formatPct(g.selection_rate_ci[1], 0)}]
+                    </span>
+                  ) : null}
+                </td>
                 <td className="py-2 pr-4 text-right tabular-nums">{formatPct(g.tpr)}</td>
                 <td className="py-2 pr-4 text-right tabular-nums">{formatPct(g.fpr)}</td>
                 <td className="py-2 pr-4 text-right tabular-nums">{formatPct(g.precision)}</td>
@@ -68,11 +76,15 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
         </table>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
         <Metric
           label="Selection-rate ratio"
           value={formatNum(current.summary.selection_rate_ratio, 3)}
-          hint="min ÷ max approval rate (1.0 = parity)"
+          hint={
+            current.summary.disparate_impact_ratio_ci
+              ? `95% CI [${formatNum(current.summary.disparate_impact_ratio_ci[0], 3)}, ${formatNum(current.summary.disparate_impact_ratio_ci[1], 3)}]`
+              : "min ÷ max approval rate (1.0 = parity)"
+          }
         />
         <Metric
           label="Demographic parity gap"
@@ -84,7 +96,23 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
           value={formatNum(current.summary.equal_opportunity_difference, 3)}
           hint="max − min TPR"
         />
+        <Metric
+          label="Equalized odds gap"
+          value={formatNum(current.summary.equalized_odds_difference, 3)}
+          hint={
+            current.summary.equalized_odds_difference_ci
+              ? `95% CI [${formatNum(current.summary.equalized_odds_difference_ci[0], 3)}, ${formatNum(current.summary.equalized_odds_difference_ci[1], 3)}]`
+              : "max TPR/FPR gap"
+          }
+        />
       </div>
+
+      <p className="text-[11px] text-slate-400">
+        Groups used in the ratios: {current.summary.n_groups_considered} of{" "}
+        {current.summary.n_groups_total ?? current.groups.length}. Groups below the
+        minimum size are shown but excluded from the ratios. Intervals are Wilson
+        (rates) and bootstrap (ratios) sampling uncertainty only.
+      </p>
 
       <p className="text-[11px] text-slate-500">{fairness.disclaimer}</p>
       {fairness.unavailable_attributes?.length ? (
