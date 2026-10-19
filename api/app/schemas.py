@@ -169,6 +169,7 @@ class JobResponse(BaseModel):
     created_at: str
     updated_at: str
     backend: str | None = None
+    durable: bool | None = None
     events: list[dict] = []
     result: dict | None = None
     error: str | None = None

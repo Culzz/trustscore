@@ -150,6 +150,30 @@ async def _run_memory(job_id: str, payload: dict) -> None:
         fail(job_id, str(exc))
 
 
+def run_inline(job_id: str, payload: dict) -> dict:
+    """Run a job to completion *inside the current request*.
+
+    Used when no durable store is configured (for example Vercel with no
+    database). A serverless runtime may freeze the instance as soon as the
+    response is written, and a later ``GET /jobs/{id}`` can land on a different
+    instance that never saw the job. Finishing inline and returning the result
+    in the POST response keeps the applicant flow correct without Redis or
+    Postgres. With a database configured, ``dispatch`` keeps the async path and
+    polls survive instance recycling.
+    """
+    from .services.apply_flow import run_application
+
+    def emitter(event: dict) -> None:
+        emit(job_id, event)
+
+    try:
+        result = run_application(payload, emitter)
+        finish(job_id, result)
+    except Exception as exc:  # pragma: no cover - defensive
+        fail(job_id, str(exc))
+    return get_job(job_id) or {}
+
+
 def dispatch(job_id: str, payload: dict) -> str:
     """Start the job on the configured backend. Returns the backend used."""
     backend = get_settings().resolved_job_backend

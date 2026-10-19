@@ -249,6 +249,7 @@ export interface JobResponse {
   created_at: string;
   updated_at: string;
   backend?: string | null;
+  durable?: boolean | null;
   events: JobEvent[];
   result?: ApplicationResult | null;
   error?: string | null;

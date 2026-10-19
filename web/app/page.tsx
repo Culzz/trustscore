@@ -44,7 +44,7 @@ export default function ApplicantPage() {
   const [result, setResult] = useState<ApplicationResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [transport, setTransport] = useState<"websocket" | "polling" | null>(null);
+  const [transport, setTransport] = useState<"websocket" | "polling" | "inline" | null>(null);
 
   // Policy controls.
   const [model, setModel] = useState<string>("");
@@ -105,6 +105,21 @@ export default function ApplicantPage() {
         region,
         use_macro_tilt: false,
       });
+      // Without a durable job store the API runs the flow inside the request
+      // and returns the finished job. Render it directly: polling could land on
+      // a different serverless instance that never saw the job.
+      if (job.result || job.status === "complete") {
+        setEvents(job.events ?? []);
+        setResult(job.result ?? null);
+        setTransport("inline");
+        setRunning(false);
+        return;
+      }
+      if (job.status === "error") {
+        setRunning(false);
+        setError(job.error ?? "The application could not be scored.");
+        return;
+      }
       stopRef.current = watchJob(job.job_id, {
         onEvent: (event) =>
           setEvents((prev) => {
@@ -357,7 +372,11 @@ export default function ApplicantPage() {
 
                   {transport ? (
                     <p className="text-[10px] text-slate-400">
-                      Milestones streamed over {transport === "websocket" ? "WebSocket" : "polling"}.
+                      {transport === "websocket"
+                        ? "Milestones streamed over WebSocket."
+                        : transport === "polling"
+                          ? "Milestones streamed over polling."
+                          : "Scored synchronously in this request (no durable job store configured)."}
                     </p>
                   ) : null}
 

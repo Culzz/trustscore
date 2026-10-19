@@ -37,7 +37,6 @@ from ..services.portfolio import (
     simulate,
     sweep,
 )
-from ..services.report_pdf import build_compliance_report
 
 router = APIRouter(tags=["audit"])
 
@@ -390,6 +389,11 @@ def alerts_test(payload: AlertTestRequest) -> dict:
 @router.get("/report.pdf")
 def report_pdf() -> Response:
     """Server-side 'Compliance Alignment & Fair Lending' PDF."""
+    # Imported lazily: reportlab (and its C accelerator) is only needed for this
+    # endpoint. Keeping it out of the module import trims serverless cold-start
+    # time and memory for the scoring endpoints.
+    from ..services.report_pdf import build_compliance_report
+
     metadata = load_metadata()
     if not metadata:
         raise HTTPException(status_code=503, detail="Model metadata not found.")

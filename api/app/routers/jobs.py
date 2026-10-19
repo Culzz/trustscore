@@ -27,7 +27,14 @@ router = APIRouter(tags=["jobs"])
 @router.post("/apply", response_model=JobResponse, status_code=202)
 @limiter.limit(get_settings().rate_limit)
 def apply(request: Request, payload: ApplyRequest) -> JobResponse:
-    """Queue an application. Returns immediately with a job id."""
+    """Run an application and return its job record.
+
+    With durable storage (Postgres/Redis) the job is dispatched asynchronously
+    and the caller polls ``GET /jobs/{id}``. Without it -- the free-tier Vercel
+    deployment -- the job runs inside this request and the completed result is
+    returned inline, because a later poll may hit an instance that never saw the
+    job.
+    """
     job_payload = payload.model_dump()
     job_id = jobs.create_job("apply", job_payload)
 
@@ -37,9 +44,17 @@ def apply(request: Request, payload: ApplyRequest) -> JobResponse:
     except Exception:  # pragma: no cover - logging must never break scoring
         pass
 
-    backend = jobs.dispatch(job_id, job_payload)
-    job = jobs.get_job(job_id) or {}
-    job["backend"] = backend
+    if db.is_enabled():
+        backend = jobs.dispatch(job_id, job_payload)
+        job = jobs.get_job(job_id) or {}
+        job["backend"] = backend
+        job["durable"] = True
+    else:
+        # No durable store: finish in-request so the caller never depends on a
+        # second instance having the job.
+        job = jobs.run_inline(job_id, job_payload)
+        job["backend"] = get_settings().resolved_job_backend
+        job["durable"] = False
     return JobResponse(**job)
 
 
