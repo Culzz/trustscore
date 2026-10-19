@@ -49,3 +49,6 @@ Thumbs.db
 
 # ---- reports that are regenerated (keep the committed contract copies) ----
 # reports/*.html
+
+.vercel
+.env*

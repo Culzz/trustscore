@@ -14,5 +14,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.main import app  # noqa: E402
 
-# Vercel looks for a module-level ``app``.
-handler = app
+# Vercel looks for a module-level ASGI ``app``. Do NOT also export ``handler``:
+# the runtime treats a module-level ``handler`` as a legacy
+# BaseHTTPRequestHandler *class* and calls issubclass() on it, which fails for a
+# FastAPI instance.
+__all__ = ["app"]

@@ -25,6 +25,22 @@ def test_api_prefix_is_stripped(client):
     assert res.json()["status"] == "ok"
 
 
+def test_strip_prefix_middleware_accepts_keyword_app():
+    """Starlette passes the wrapped app as ``app=`` on the pinned runtime.
+
+    Regression guard: the deployed Starlette calls ``cls(app=app, ...)`` when it
+    builds the middleware stack. A constructor that only accepts a positional
+    ``asgi_app`` raised ``TypeError`` on the first production request while
+    newer local Starlette versions passed it positionally, so the test suite did
+    not catch it.
+    """
+    from app.main import StripApiPrefix
+
+    sentinel = object()
+    middleware = StripApiPrefix(app=sentinel)
+    assert middleware.asgi_app is sentinel
+
+
 def test_model_metadata(client):
     res = client.get("/model")
     assert res.status_code == 200

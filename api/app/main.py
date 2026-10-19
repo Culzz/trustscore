@@ -46,8 +46,13 @@ class StripApiPrefix:
     ``/api/predict`` (Vercel rewrite) without duplication.
     """
 
-    def __init__(self, asgi_app):
-        self.asgi_app = asgi_app
+    def __init__(self, app):
+        # Starlette's ``build_middleware_stack`` passes the wrapped app as the
+        # ``app=`` keyword on the versions pinned in ``api/requirements.txt``
+        # (older releases passed it positionally). The parameter must therefore
+        # be named ``app``; naming it ``asgi_app`` breaks the first request with
+        # ``TypeError: unexpected keyword argument 'app'`` on the deployed stack.
+        self.asgi_app = app
 
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
