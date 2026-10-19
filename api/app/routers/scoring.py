@@ -1,5 +1,9 @@
 """Scoring endpoints: /predict, /explain, /decision, /counterfactual, /blueprint."""
-from __future__ import annotations
+
+# NOTE: deliberately no ``from __future__ import annotations`` in this module.
+# FastAPI resolves endpoint annotations using the decorated callable's globals,
+# and slowapi's ``@limiter.limit`` wrapper does not share this module's globals.
+# Postponed annotations therefore break schema resolution on some versions.
 
 from datetime import datetime, timezone
 from uuid import uuid4

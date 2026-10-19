@@ -7,7 +7,11 @@ is the "stream the milestones" path the applicant UI uses: submit, then watch
 WebSockets are only available in the containerised deployment; on Vercel the
 client polls ``GET /jobs/{id}`` instead and gets the same events.
 """
-from __future__ import annotations
+# NOTE: deliberately no ``from __future__ import annotations`` here. FastAPI
+# evaluates endpoint annotations against the decorated callable's globals, and
+# slowapi's ``@limiter.limit`` wrapper does not share this module's globals. With
+# postponed annotations that turns ``ApplyRequest`` into an unresolvable string
+# (NameError on Python 3.12 / older FastAPI). Eager annotations sidestep it.
 
 from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisconnect
 
