@@ -23,16 +23,16 @@ export function NoticeCard({ narrative }: { narrative: Narrative }) {
 
   return (
     <div className="space-y-4">
-      <div className={cn("rounded-lg border p-3", tone)}>
+      <div className={cn("rounded-sm border border-l-2 p-3", tone)}>
         <p className="text-sm font-semibold">{narrative.headline}</p>
         <p className="mt-1 text-xs opacity-90">{narrative.encouragement}</p>
       </div>
 
       {narrative.reason_codes.length > 0 ? (
-        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-100">
+        <ul className="divide-y divide-slate-200 rounded-sm border border-slate-200">
           {narrative.reason_codes.map((code) => (
             <li key={code.code + code.factor} className="flex gap-3 p-3">
-              <span className="mono shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
+              <span className="mono shrink-0 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[10px] font-semibold text-slate-600">
                 {code.code}
               </span>
               <div>
@@ -58,7 +58,7 @@ export function NoticeCard({ narrative }: { narrative: Narrative }) {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+      <div className="rounded-sm border border-slate-200 bg-slate-100/40 p-3">
         <p className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-600">
           {narrative.guardrail.passed ? (
             <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />

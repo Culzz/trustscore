@@ -21,10 +21,10 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
             key={key}
             onClick={() => setSelected(key)}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs font-medium transition",
+              "rounded-sm border px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] transition",
               key === selected
-                ? "border-brand-300 bg-brand-50 text-brand-700"
-                : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
+                ? "border-brand-600 bg-brand-50 text-brand-700"
+                : "border-slate-300 bg-paper text-slate-600 hover:border-slate-500 hover:text-slate-900",
             )}
           >
             {block.label}
@@ -35,7 +35,7 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr className="border-b border-slate-300 text-left text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               <th className="py-2 pr-4">Group</th>
               <th className="py-2 pr-4 text-right">n</th>
               <th className="py-2 pr-4 text-right">Approval rate</th>
@@ -46,11 +46,11 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
           </thead>
           <tbody>
             {current.groups.map((g) => (
-              <tr key={g.group} className="border-b border-slate-100">
+              <tr key={g.group} className="border-b border-slate-200/70">
                 <td className="py-2 pr-4 font-medium text-slate-700">
                   {g.group}
                   {g.low_sample ? (
-                    <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+                    <span className="ml-2 rounded-sm bg-slate-100 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.1em] text-slate-500">
                       small sample
                     </span>
                   ) : null}
@@ -126,10 +126,12 @@ export function FairnessExplorer({ fairness }: { fairness: FairnessReport }) {
 
 function Metric({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
-    <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-      <p className="text-[11px] uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="text-lg font-semibold tabular-nums text-slate-900">{value}</p>
-      <p className="text-[10px] text-slate-400">{hint}</p>
+    <div className="rounded-sm border border-slate-200 bg-slate-100/40 px-3 py-2.5">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </p>
+      <p className="mono mt-1 text-lg font-medium text-slate-900">{value}</p>
+      <p className="mt-0.5 text-[10px] text-slate-400">{hint}</p>
     </div>
   );
 }

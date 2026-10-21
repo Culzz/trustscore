@@ -109,22 +109,30 @@ export default function AuditorPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <div className="flex items-center gap-2">
-          <Terminal className="h-5 w-5 text-brand-400" />
-          <h1 className="text-2xl font-semibold text-white">Auditor console</h1>
-          <DarkBadge tone="warn">simulation</DarkBadge>
+      <header className="flex flex-wrap items-end justify-between gap-5 border-b border-slate-800 pb-6">
+        <div className="max-w-3xl">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-9 w-9 items-center justify-center border border-slate-700 bg-slate-900">
+              <Terminal className="h-4 w-4 text-amber-400" strokeWidth={1.5} />
+            </span>
+            <p className="eyebrow !text-slate-500">Governance · simulation</p>
+          </div>
+          <h1 className="mt-3 font-display text-4xl font-medium tracking-tight text-slate-50">
+            Auditor console
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+            Governance view: policy simulation with the disparate-impact
+            guardrail, Alpha/Beta model comparison, a bias injector, live drift
+            and adversarial alerting, model lineage, and a one-click compliance
+            report.{" "}
+            <span className="text-slate-300">
+              The headline metrics and the guardrail are the final held-out test
+              evaluation; the sliders, A/B and bias injector run on the separate
+              policy tuning set (validation).
+            </span>
+          </p>
         </div>
-        <p className="max-w-3xl text-sm text-slate-400">
-          Governance view: policy simulation with the disparate-impact guardrail,
-          Alpha/Beta model comparison, a bias injector, live drift and adversarial
-          alerting, model lineage, and a one-click compliance report.{" "}
-          <span className="text-slate-300">
-            The headline metrics and the guardrail are the final held-out test
-            evaluation; the sliders, A/B and bias injector run on the separate
-            policy tuning set (validation).
-          </span>
-        </p>
+        <DarkBadge tone="warn">Validation · policy tuning</DarkBadge>
       </header>
 
       {error ? (

@@ -21,21 +21,27 @@ export function formatMoney(value: number | null | undefined): string {
   return `$${Math.round(value).toLocaleString()}`;
 }
 
-export const BAND_STYLES: Record<Band, { chip: string; text: string; ring: string }> = {
+export const BAND_STYLES: Record<
+  Band,
+  { chip: string; text: string; ring: string; bar: string }
+> = {
   approve: {
-    chip: "bg-emerald-100 text-emerald-800 border-emerald-200",
+    chip: "bg-emerald-50 text-emerald-800 border-emerald-300",
     text: "text-emerald-700",
-    ring: "stroke-emerald-500",
+    ring: "stroke-emerald-600",
+    bar: "bg-emerald-500",
   },
   refer: {
-    chip: "bg-amber-100 text-amber-800 border-amber-200",
+    chip: "bg-amber-50 text-amber-800 border-amber-300",
     text: "text-amber-700",
-    ring: "stroke-amber-500",
+    ring: "stroke-amber-600",
+    bar: "bg-amber-500",
   },
   decline: {
-    chip: "bg-rose-100 text-rose-800 border-rose-200",
+    chip: "bg-rose-50 text-rose-800 border-rose-300",
     text: "text-rose-700",
-    ring: "stroke-rose-500",
+    ring: "stroke-rose-600",
+    bar: "bg-rose-500",
   },
 };
 

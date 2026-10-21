@@ -19,9 +19,9 @@ export function CalibrationChart({
   variant?: "light" | "dark";
 }) {
   const dark = variant === "dark";
-  const axis = dark ? "#64748b" : "#64748b";
-  const grid = dark ? "#1e293b" : "#e2e8f0";
-  const line = dark ? "#22d3ee" : "#4f46e5";
+  const axis = dark ? "#A8977C" : "#857560";
+  const grid = dark ? "#362F25" : "#E2D6C0";
+  const line = dark ? "#D8A65A" : "#A64420";
   const data = curve
     .filter((b) => b.mean_predicted !== null && b.observed_rate !== null)
     .map((b) => ({
@@ -53,8 +53,20 @@ export function CalibrationChart({
           <Tooltip
             contentStyle={
               dark
-                ? { background: "#020617", border: "1px solid #1e293b", borderRadius: 8, fontSize: 11 }
-                : undefined
+                ? {
+                    background: "#15110C",
+                    border: "1px solid #362F25",
+                    borderRadius: 3,
+                    fontSize: 11,
+                    color: "#F0E8D8",
+                  }
+                : {
+                    background: "#FCFAF3",
+                    border: "1px solid #E2D6C0",
+                    borderRadius: 3,
+                    fontSize: 11,
+                    color: "#241F18",
+                  }
             }
             formatter={(value: number) => [`${value}%`, ""]}
             labelFormatter={(l) => `Predicted ${l}%`}
@@ -64,15 +76,15 @@ export function CalibrationChart({
               { x: 0, y: 0 },
               { x: 100, y: 100 },
             ]}
-            stroke={dark ? "#475569" : "#94a3b8"}
+            stroke={dark ? "#5A4E3D" : "#CBBBA0"}
             strokeDasharray="4 4"
           />
           <Line
             type="monotone"
             dataKey="observed"
             stroke={line}
-            strokeWidth={2}
-            dot={{ r: 3 }}
+            strokeWidth={1.75}
+            dot={{ r: 3, strokeWidth: 1 }}
             name="Observed"
           />
         </LineChart>

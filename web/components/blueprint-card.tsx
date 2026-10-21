@@ -41,16 +41,16 @@ function RouteRow({ route }: { route: BlueprintRoute }) {
   const Icon = KIND_ICON[route.kind] ?? Lightbulb;
   const actionability = route.actionability ?? "actionable";
   return (
-    <li className="rounded-lg border border-slate-100 bg-slate-50 p-3">
+    <li className="rounded-sm border border-slate-200 bg-paper p-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2">
-          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
+          <Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" strokeWidth={1.5} />
           <div>
             <p className="text-sm font-medium text-slate-900">{route.headline}</p>
             <p className="mt-0.5 text-sm text-slate-600">{route.detail}</p>
             <span
               className={cn(
-                "mt-1.5 inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                "mt-2 inline-block rounded-sm border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]",
                 ACTIONABILITY_STYLE[actionability] ?? ACTIONABILITY_STYLE.actionable,
               )}
             >
@@ -58,14 +58,14 @@ function RouteRow({ route }: { route: BlueprintRoute }) {
             </span>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
           <BandBadge
             band={route.metrics.new_band}
             label={bandText(route.metrics.new_band)}
           />
           <span
             className={cn(
-              "rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+              "rounded-sm border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em]",
               CONFIDENCE_STYLE[route.metrics.confidence] ?? CONFIDENCE_STYLE.none,
             )}
           >
@@ -96,7 +96,7 @@ function RouteRow({ route }: { route: BlueprintRoute }) {
 export function BlueprintCard({ blueprint }: { blueprint: Blueprint }) {
   if (blueprint.status === "already_approved") {
     return (
-      <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex items-start gap-3 rounded-sm border border-emerald-200 border-l-2 border-l-emerald-500 bg-emerald-50 p-4">
         <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
         <div>
           <p className="text-sm font-semibold text-emerald-900">
@@ -119,14 +119,14 @@ export function BlueprintCard({ blueprint }: { blueprint: Blueprint }) {
           ))}
         </ul>
       ) : (
-        <p className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
+        <p className="rounded-sm border border-slate-200 bg-slate-100/40 p-3 text-sm text-slate-500">
           {blueprint.no_route_reason ??
             "No feasible change was found in the applicant-controlled fields under the current policy."}
         </p>
       )}
 
       {blueprint.dual_target ? (
-        <div className="rounded-lg border border-brand-100 bg-brand-50 p-3">
+        <div className="rounded-sm border border-brand-200 bg-brand-50 p-3">
           <p className="flex items-center gap-1.5 text-xs font-semibold text-brand-900">
             <GitCompareArrows className="h-3.5 w-3.5" />
             {blueprint.dual_target.headline}
@@ -141,7 +141,7 @@ export function BlueprintCard({ blueprint }: { blueprint: Blueprint }) {
                   <ArrowRight className="h-3 w-3 shrink-0 opacity-60" />
                   {option.change}
                   {!option.within_control ? (
-                    <span className="rounded-full border border-brand-200 bg-white px-1.5 py-0.5 text-[10px] text-brand-700">
+                    <span className="rounded-sm border border-brand-200 bg-paper px-1.5 py-0.5 text-[9px] uppercase tracking-[0.1em] text-brand-700">
                       outside your control
                     </span>
                   ) : null}
@@ -159,7 +159,7 @@ export function BlueprintCard({ blueprint }: { blueprint: Blueprint }) {
       ) : null}
 
       {blueprint.immutable_fields && blueprint.immutable_fields.length > 0 ? (
-        <details className="rounded-lg border border-slate-100 bg-white p-3">
+        <details className="rounded-sm border border-slate-200 bg-paper p-3">
           <summary className="cursor-pointer text-xs font-medium text-slate-600">
             Factors never suggested as changes ({blueprint.immutable_fields.length})
           </summary>

@@ -2,26 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  color-scheme: light;
-}
+@layer base {
+  :root {
+    color-scheme: light;
+    /* Self-hosted via Fontsource: Newsreader, Public Sans, IBM Plex Mono. */
+    --font-display: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+    --font-sans: "Public Sans Variable", ui-sans-serif, system-ui,
+      -apple-system, "Segoe UI", sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+  }
 
-html[data-mode="auditor"] {
-  color-scheme: dark;
-}
+  html[data-mode="auditor"] {
+    color-scheme: dark;
+  }
 
-html,
-body {
-  @apply antialiased;
-}
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
 
-body {
-  @apply bg-slate-50 text-slate-900;
-  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
-}
+  html,
+  body {
+    @apply antialiased;
+  }
 
-html[data-mode="auditor"] body {
-  @apply bg-slate-950 text-slate-100;
+  body {
+    @apply bg-slate-50 font-sans text-slate-900;
+    background-image:
+      radial-gradient(
+        1100px 520px at 50% -8%,
+        rgba(166, 68, 32, 0.06),
+        transparent 65%
+      ),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+    background-size: auto, 180px 180px;
+    font-feature-settings: "ss01" 1, "cv05" 1;
+  }
+
+  html[data-mode="auditor"] body {
+    @apply bg-slate-950 text-slate-100;
+    background-image:
+      radial-gradient(
+        900px 480px at 72% -10%,
+        rgba(205, 152, 55, 0.09),
+        transparent 62%
+      ),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: #a64420;
+    color: #f8f3e8;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
+
+  a,
+  button,
+  summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #cbbba0 transparent;
+  }
+
+  html[data-mode="auditor"] * {
+    scrollbar-color: #514636 transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbbba0;
+    border: 3px solid #f8f3e8;
+    border-radius: 999px;
+  }
+  html[data-mode="auditor"] ::-webkit-scrollbar-thumb {
+    background: #514636;
+    border-color: #15110c;
+  }
 }
 
 @layer components {
@@ -29,14 +99,45 @@ html[data-mode="auditor"] body {
     @apply mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8;
   }
 
+  /* Small-caps label used above headings, in cards and in the footer. */
+  .eyebrow {
+    @apply text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500;
+  }
+
+  .mono {
+    @apply font-mono tabular-nums;
+  }
+
+  /* The double rule of a printed ledger. */
+  .rule-double {
+    border-top: 1px solid theme("colors.slate.300");
+    border-bottom: 1px solid theme("colors.slate.200");
+    height: 4px;
+  }
+
+  /* Rubber-stamp chips in the hero. */
+  .stamp {
+    @apply inline-flex items-center gap-1.5 border border-slate-300 bg-paper/60 px-2.5 py-1 text-[9px] font-semibold uppercase tracking-[0.18em] text-slate-600;
+    box-shadow: 1px 1px 0 0 rgba(36, 31, 24, 0.06);
+  }
+
+  .link-editorial {
+    @apply underline decoration-slate-300 decoration-1 underline-offset-4 transition hover:decoration-brand-600;
+  }
+
   /* Dark-surface primitives for the auditor terminal. */
   .panel-dark {
-    @apply rounded-xl border border-slate-800 bg-slate-900/70 shadow-lg shadow-black/20;
+    @apply rounded-sm border border-slate-800 bg-slate-900/60 shadow-lg shadow-black/20;
   }
   .panel-dark-header {
     @apply border-b border-slate-800 px-4 py-3;
   }
-  .mono {
-    @apply font-mono tabular-nums;
+
+  /* Dotted leader used in ledger-style key/value rows. */
+  .leader {
+    background-image: radial-gradient(circle, currentColor 1px, transparent 1px);
+    background-position: bottom;
+    background-size: 6px 6px;
+    background-repeat: repeat-x;
   }
 }

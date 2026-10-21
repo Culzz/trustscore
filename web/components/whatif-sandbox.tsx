@@ -39,15 +39,15 @@ function Pane({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white">
-      <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+    <div className="flex flex-col rounded-sm border border-slate-200 bg-paper">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
             {title}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-400">{subtitle}</p>
+          <p className="mt-0.5 text-[10px] text-slate-400">{subtitle}</p>
         </div>
-        {loading ? <Loader2 className="h-4 w-4 animate-spin text-brand-500" /> : null}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin text-brand-600" /> : null}
       </div>
 
       <div className="space-y-3 px-4 py-4">
@@ -58,7 +58,7 @@ function Pane({
               label={BAND_LABEL_TEXT[result.band_label]}
             />
           ) : (
-            <span className="h-6 w-20 animate-pulse rounded-full bg-slate-100" />
+            <span className="h-6 w-20 animate-pulse rounded-sm bg-slate-100" />
           )}
           <div className="text-xs text-slate-500">
             {result ? (
@@ -169,7 +169,7 @@ export function WhatIfSandbox({
           result={resultB}
           loading={loading && !resultB}
         >
-          <div className="space-y-3 border-t border-slate-100 pt-3">
+          <div className="space-y-3 border-t border-slate-200 pt-3">
             <div>
               <Label>Requested amount</Label>
               <div className="flex items-center gap-3">
@@ -191,6 +191,7 @@ export function WhatIfSandbox({
               <div>
                 <Label>Loan purpose</Label>
                 <Select
+                  className="px-2 pr-7 text-xs"
                   value={variant.loan_intent}
                   onChange={(e) =>
                     set("loan_intent", e.target.value as Applicant["loan_intent"])
@@ -206,6 +207,7 @@ export function WhatIfSandbox({
               <div>
                 <Label>Loan grade</Label>
                 <Select
+                  className="px-2 pr-7 text-xs"
                   value={variant.loan_grade}
                   onChange={(e) =>
                     set("loan_grade", e.target.value as Applicant["loan_grade"])
@@ -237,10 +239,10 @@ export function WhatIfSandbox({
       {resultA && resultB ? (
         <div
           className={cn(
-            "flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2 text-xs",
+            "flex flex-wrap items-center gap-3 rounded-sm border px-3 py-2 text-xs",
             bandChanged
               ? "border-brand-200 bg-brand-50 text-brand-900"
-              : "border-slate-200 bg-slate-50 text-slate-600",
+              : "border-slate-200 bg-slate-100/40 text-slate-600",
           )}
         >
           <span className="flex items-center gap-2 font-medium">

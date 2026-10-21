@@ -174,7 +174,7 @@ export function BiasInjector({
           type="button"
           onClick={() => void run()}
           disabled={loading || !selectedGroup}
-          className="inline-flex items-center gap-2 rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-rose-500 disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded-sm border border-rose-700 bg-rose-700 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-50 transition hover:border-rose-600 hover:bg-rose-600 disabled:opacity-60"
         >
           {loading ? (
             <Loader2 className="h-3.5 w-3.5 animate-spin" />

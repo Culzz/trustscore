@@ -202,12 +202,27 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
 
         <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-800 bg-slate-950/40 p-3">
           <label className="flex items-center gap-2 text-xs text-slate-300">
-            <input
-              type="checkbox"
-              checked={applyFairness}
-              onChange={(e) => setApplyFairness(e.target.checked)}
-              className="h-3.5 w-3.5 accent-brand-500"
-            />
+            <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+              <input
+                type="checkbox"
+                checked={applyFairness}
+                onChange={(e) => setApplyFairness(e.target.checked)}
+                className="peer h-3.5 w-3.5 appearance-none rounded-[2px] border border-slate-600 bg-slate-950 transition checked:border-brand-500 checked:bg-brand-500"
+              />
+              <svg
+                aria-hidden
+                viewBox="0 0 10 10"
+                className="pointer-events-none absolute h-2.5 w-2.5 text-slate-950 opacity-0 transition peer-checked:opacity-100"
+              >
+                <path
+                  d="M1.5 5.5 4 8l4.5-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="square"
+                />
+              </svg>
+            </span>
             Apply fairness mitigation (equalized odds)
           </label>
           <div className="min-w-[180px]">
@@ -401,62 +416,63 @@ export function PolicyLab({ defaults, attributes, defaultAttribute, floor }: Pro
               <div className="h-64 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={sweepData} margin={{ top: 8, right: 12, bottom: 4, left: -18 }}>
-                    <CartesianGrid stroke="#1e293b" strokeDasharray="3 3" />
+                    <CartesianGrid stroke="#362F25" strokeDasharray="3 3" />
                     <XAxis
                       dataKey="approve_max_pd"
-                      stroke="#64748b"
+                      stroke="#857560"
                       fontSize={10}
                       tickFormatter={(v: number) => `${(v * 100).toFixed(0)}%`}
                     />
-                    <YAxis yAxisId="left" stroke="#64748b" fontSize={10} domain={[0, 1]} />
+                    <YAxis yAxisId="left" stroke="#857560" fontSize={10} domain={[0, 1]} />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      stroke="#64748b"
+                      stroke="#857560"
                       fontSize={10}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: "#020617",
-                        border: "1px solid #1e293b",
-                        borderRadius: 8,
+                        background: "#15110C",
+                        border: "1px solid #362F25",
+                        borderRadius: 3,
                         fontSize: 11,
+                        color: "#F0E8D8",
                       }}
                     />
-                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    <Legend wrapperStyle={{ fontSize: 10, color: "#A8977C" }} />
                     <ReferenceLine
                       yAxisId="left"
                       y={floor}
-                      stroke="#f59e0b"
+                      stroke="#CD9837"
                       strokeDasharray="4 4"
-                      label={{ value: "DI floor", fill: "#f59e0b", fontSize: 10 }}
+                      label={{ value: "DI floor", fill: "#CD9837", fontSize: 10 }}
                     />
                     <Line
                       yAxisId="left"
                       type="monotone"
                       dataKey="disparate_impact_ratio"
                       name="Disparate impact"
-                      stroke="#38bdf8"
+                      stroke="#6D99A2"
                       dot={false}
-                      strokeWidth={2}
+                      strokeWidth={1.75}
                     />
                     <Line
                       yAxisId="left"
                       type="monotone"
                       dataKey="approval_rate"
                       name="Approval rate"
-                      stroke="#34d399"
+                      stroke="#7F9E60"
                       dot={false}
-                      strokeWidth={2}
+                      strokeWidth={1.75}
                     />
                     <Line
                       yAxisId="right"
                       type="monotone"
                       dataKey="expected_cost_per_loan"
                       name="Expected cost / loan"
-                      stroke="#f472b6"
+                      stroke="#C66A53"
                       dot={false}
-                      strokeWidth={2}
+                      strokeWidth={1.75}
                     />
                   </LineChart>
                 </ResponsiveContainer>

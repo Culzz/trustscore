@@ -15,8 +15,8 @@ export function SimulationWatermark({ tone = "light" }: { tone?: "light" | "dark
       <div className="flex h-full w-full items-center justify-center">
         <span
           className={cn(
-            "whitespace-nowrap text-[9vw] font-black uppercase leading-none tracking-[0.2em]",
-            tone === "dark" ? "text-white/[0.03]" : "text-slate-900/[0.035]",
+            "whitespace-nowrap font-display text-[8.5vw] font-medium uppercase italic leading-none tracking-[0.28em]",
+            tone === "dark" ? "text-slate-100/[0.035]" : "text-slate-900/[0.04]",
           )}
           style={{ transform: "rotate(-24deg)" }}
         >

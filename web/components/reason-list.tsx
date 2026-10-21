@@ -17,11 +17,11 @@ export function ReasonList({ reasons }: { reasons: ReasonItem[] }) {
         return (
           <li
             key={`${reason.factor}-${i}`}
-            className="flex items-start gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2"
+            className="flex items-start gap-3 rounded-sm border border-slate-200 bg-paper px-3 py-2"
           >
             <span
               className={cn(
-                "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full",
+                "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-sm",
                 increases
                   ? "bg-rose-100 text-rose-700"
                   : "bg-emerald-100 text-emerald-700",
@@ -29,9 +29,9 @@ export function ReasonList({ reasons }: { reasons: ReasonItem[] }) {
               aria-hidden
             >
               {increases ? (
-                <ArrowUpRight className="h-4 w-4" />
+                <ArrowUpRight className="h-4 w-4" strokeWidth={1.5} />
               ) : (
-                <ArrowDownRight className="h-4 w-4" />
+                <ArrowDownRight className="h-4 w-4" strokeWidth={1.5} />
               )}
             </span>
             <div className="min-w-0">

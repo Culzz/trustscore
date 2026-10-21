@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AlertTriangle, Download, Loader2 } from "lucide-react";
 import { api, ApiError, API_BASE } from "@/lib/api";
 import type { ModelMetadata } from "@/lib/types";
+import { useMode } from "@/components/mode-provider";
 import {
   Card,
   CardContent,
@@ -15,8 +16,13 @@ import { FairnessExplorer } from "@/components/fairness-explorer";
 import { formatNum, formatPct } from "@/lib/utils";
 
 export default function ModelCardPage() {
+  const { setMode } = useMode();
   const [meta, setMeta] = useState<ModelMetadata | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMode("applicant");
+  }, [setMode]);
 
   useEffect(() => {
     api
@@ -29,12 +35,12 @@ export default function ModelCardPage() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-xl rounded-xl border border-rose-200 bg-rose-50 p-6 text-sm text-rose-800">
+      <div className="mx-auto max-w-xl rounded-sm border border-rose-200 border-l-2 border-l-rose-500 bg-rose-50 p-6 text-sm text-rose-800">
         <div className="mb-2 flex items-center gap-2 font-semibold">
-          <AlertTriangle className="h-5 w-5" /> {error}
+          <AlertTriangle className="h-5 w-5" strokeWidth={1.5} /> {error}
         </div>
         <p>
-          Run <code className="rounded bg-white px-1">python -m training.src.train</code>{" "}
+          Run <code className="rounded-sm bg-slate-100 px-1">python -m training.src.train</code>{" "}
           first.
         </p>
       </div>
@@ -53,25 +59,29 @@ export default function ModelCardPage() {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-slate-900">Model Card</h1>
+          <p className="eyebrow">Documentation · held-out test</p>
+          <h1 className="mt-2 font-display text-4xl font-medium tracking-tight text-slate-900">
+            Model Card
+          </h1>
           <p className="text-sm text-slate-600">
-            Version <span className="font-medium text-slate-800">{meta.version}</span> ·
-            generated {new Date(meta.trained_at).toLocaleString()}
+            Version{" "}
+            <span className="mono text-slate-800">{meta.version}</span> · generated{" "}
+            {new Date(meta.trained_at).toLocaleString()}
           </p>
         </div>
         <a
           href={`${API_BASE}/model`}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-2 rounded-sm border border-slate-300 bg-paper px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-700 shadow-press transition hover:border-slate-900"
         >
-          <Download className="h-4 w-4" /> Raw JSON
+          <Download className="h-4 w-4" strokeWidth={1.5} /> Raw JSON
         </a>
       </header>
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+      <div className="rounded-sm border border-amber-200 border-l-2 border-l-amber-500 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
         {meta.disclaimer}
       </div>
 
@@ -120,7 +130,7 @@ export default function ModelCardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                <tr className="border-b border-slate-300 text-left text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   <th className="py-2 pr-4">Model</th>
                   <th className="py-2 pr-4 text-right">ROC-AUC</th>
                   <th className="py-2 pr-4 text-right">PR-AUC</th>
@@ -136,18 +146,18 @@ export default function ModelCardPage() {
                     ["LightGBM (calibrated)", "calibrated"],
                   ] as const
                 ).map(([label, key]) => (
-                  <tr key={key} className="border-b border-slate-100">
+                  <tr key={key} className="border-b border-slate-200/70">
                     <td className="py-2 pr-4 text-slate-700">{label}</td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    <td className="mono py-2 pr-4 text-right">
                       {formatNum(meta.metrics[key]?.roc_auc, 4)}
                     </td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    <td className="mono py-2 pr-4 text-right">
                       {formatNum(meta.metrics[key]?.pr_auc, 4)}
                     </td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    <td className="mono py-2 pr-4 text-right">
                       {formatNum(meta.metrics[key]?.brier, 4)}
                     </td>
-                    <td className="py-2 pr-4 text-right tabular-nums">
+                    <td className="mono py-2 pr-4 text-right">
                       {formatNum(meta.metrics[key]?.f1, 3)}
                     </td>
                   </tr>
@@ -190,9 +200,9 @@ export default function ModelCardPage() {
           <CardContent>
             <ul className="space-y-1 text-sm">
               {meta.top_features.slice(0, 8).map((f) => (
-                <li key={f.feature} className="flex items-center justify-between gap-4">
+                <li key={f.feature} className="flex items-center justify-between gap-4 border-b border-dashed border-slate-200 py-1.5 last:border-0">
                   <span className="truncate text-slate-700">{f.feature}</span>
-                  <span className="tabular-nums text-slate-500">
+                  <span className="mono text-slate-500">
                     {formatNum(f.mean_abs_contribution, 4)}
                   </span>
                 </li>
@@ -229,9 +239,14 @@ export default function ModelCardPage() {
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-1.5 last:border-0">
-      <span className="text-slate-500">{label}</span>
-      <span className="text-right font-medium text-slate-800">{value}</span>
+    <div className="flex items-baseline gap-2 border-b border-slate-200 py-2 last:border-0">
+      <span className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+        {label}
+      </span>
+      <span className="h-px flex-1 border-b border-dotted border-slate-300" />
+      <span className="mono text-right text-xs font-medium text-slate-800">
+        {value}
+      </span>
     </div>
   );
 }

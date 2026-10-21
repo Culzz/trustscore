@@ -17,7 +17,7 @@ export function ComplianceReportButton() {
       <PanelHeader>
         <div>
           <PanelTitle>
-            <ShieldCheck className="h-4 w-4 text-brand-400" />
+            <ShieldCheck className="h-4 w-4 text-amber-400" strokeWidth={1.5} />
             Compliance report
           </PanelTitle>
           <PanelDescription>
@@ -35,9 +35,9 @@ export function ComplianceReportButton() {
           href={reportPdfUrl()}
           target="_blank"
           rel="noreferrer"
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-500"
+          className="inline-flex items-center gap-2 rounded-sm border border-brand-700 bg-brand-700 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-50 transition hover:border-brand-600 hover:bg-brand-600"
         >
-          <FileDown className="h-3.5 w-3.5" />
+          <FileDown className="h-3.5 w-3.5" strokeWidth={1.5} />
           Download compliance PDF
         </a>
         <p className="text-[10px] text-slate-500">

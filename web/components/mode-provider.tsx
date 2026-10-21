@@ -8,6 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { usePathname } from "next/navigation";
 
 export type PersonaMode = "applicant" | "auditor";
 
@@ -23,34 +24,33 @@ const STORAGE_KEY = "trustscore:mode";
 /**
  * The global persona shell.
  *
- * One toggle swaps the whole platform between the light, plain-language
- * applicant experience and the dark, high-density auditor terminal. The mode
- * drives the shell chrome (header, banner, background) and is persisted so a
- * reload keeps you where you were.
+ * The route owns the material: `/auditor` is the dark governance terminal,
+ * every other page is warm paper. Deriving the mode from the pathname (instead
+ * of localStorage) means a reload lands on the right surface immediately,
+ * with no light-to-dark flash.
  */
 export function ModeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<PersonaMode>("applicant");
+  const pathname = usePathname();
+  const routeMode: PersonaMode = pathname?.startsWith("/auditor")
+    ? "auditor"
+    : "applicant";
+  const [mode, setModeState] = useState<PersonaMode>(routeMode);
 
   useEffect(() => {
-    try {
-      const stored = window.localStorage.getItem(STORAGE_KEY);
-      if (stored === "auditor" || stored === "applicant") setModeState(stored);
-    } catch {
-      /* storage unavailable */
-    }
-  }, []);
+    setModeState(routeMode);
+  }, [routeMode]);
 
   useEffect(() => {
     document.documentElement.dataset.mode = mode;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, mode);
+    } catch {
+      /* storage unavailable */
+    }
   }, [mode]);
 
   const setMode = useCallback((next: PersonaMode) => {
     setModeState(next);
-    try {
-      window.localStorage.setItem(STORAGE_KEY, next);
-    } catch {
-      /* storage unavailable */
-    }
   }, []);
 
   const value = useMemo<ModeContextValue>(

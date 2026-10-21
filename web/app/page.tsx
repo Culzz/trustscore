@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertTriangle,
+  ArrowRight,
   ChevronDown,
   Info,
   Loader2,
-  RefreshCw,
+  ScanLine,
   Sparkles,
-  Wand2,
 } from "lucide-react";
 import { api, ApiError, watchJob } from "@/lib/api";
 import { DEFAULT_APPLICANT, SAMPLES, type SampleApplicant } from "@/lib/samples";
@@ -154,13 +154,33 @@ export default function ApplicantPage() {
 
   return (
     <div className="space-y-6">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold text-slate-900">Applicant view</h1>
-        <p className="text-sm text-slate-600">
-          Enter an application, or start from an example. You get an estimated risk
-          category, the reasons behind it in plain language, a simulated decision,
-          and a concrete plan for improving it.
-        </p>
+      <header className="relative">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <div className="max-w-2xl">
+            <p className="eyebrow">Consumer credit · demonstration</p>
+            <h1 className="mt-3 text-balance font-display text-4xl font-medium leading-[1.02] tracking-tight text-slate-900 sm:text-5xl">
+              See the decision,{" "}
+              <span className="italic text-brand-700">not just the score.</span>
+            </h1>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-slate-600">
+              Enter an application to get an estimated risk category, the reasons
+              in plain language, a simulated decision, and a concrete plan to
+              improve it.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="stamp">Calibrated</span>
+            <span className="stamp">Fairness-audited</span>
+            <span className="stamp">Recourse-ready</span>
+          </div>
+        </div>
+        <div className="mt-8 flex items-center gap-3" aria-hidden="true">
+          <span className="h-px flex-1 bg-slate-200" />
+          <span className="text-[8px] font-semibold uppercase tracking-[0.24em] text-slate-400">
+            Estimate · explain · improve
+          </span>
+          <span className="h-px flex-1 bg-slate-200" />
+        </div>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -168,22 +188,28 @@ export default function ApplicantPage() {
           <CardHeader>
             <CardTitle>Application details</CardTitle>
             <CardDescription>
-              Eleven fields. Nothing is stored that identifies a person.
+              Ten fields. Nothing is stored that identifies a person.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {SAMPLES.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => loadSample(s)}
-                  title={s.blurb}
-                  className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-brand-300 hover:text-brand-700"
-                >
-                  {s.name}
-                </button>
-              ))}
+            <div>
+              <p className="eyebrow mb-2">Or start from a sample</p>
+              <div className="flex flex-wrap gap-2">
+                {SAMPLES.map((s, index) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => loadSample(s)}
+                    title={s.blurb}
+                    className="group inline-flex items-center gap-2 border border-slate-300 bg-paper px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 shadow-press transition hover:border-brand-600 hover:text-brand-700"
+                  >
+                    <span className="mono text-[9px] font-normal text-slate-400 group-hover:text-brand-500">
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    {s.name}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -279,39 +305,44 @@ export default function ApplicantPage() {
               />
             </div>
 
-            <div className="grid gap-3 rounded-lg border border-slate-100 bg-slate-50 p-3 sm:grid-cols-3">
-              <div>
-                <Label>Model version</Label>
-                <Select value={model} onChange={(e) => setModel(e.target.value)}>
-                  <option value="">Default (Alpha)</option>
-                  {models.map((m) => (
-                    <option key={m.version} value={m.version}>
-                      {m.label}
-                    </option>
-                  ))}
-                </Select>
+            <div className="space-y-3 border border-slate-200 bg-slate-100/40 p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label>Model version</Label>
+                  <Select value={model} onChange={(e) => setModel(e.target.value)}>
+                    <option value="">Default (Alpha)</option>
+                    {models.map((m) => (
+                      <option key={m.version} value={m.version}>
+                        {m.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <Label>Macro region (context)</Label>
+                  <Select value={region} onChange={(e) => setRegion(e.target.value)}>
+                    {(regions.length > 0
+                      ? regions
+                      : [{ id: "national", label: "National" }]
+                    ).map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </div>
-              <div>
-                <Label>Macro region (context)</Label>
-                <Select value={region} onChange={(e) => setRegion(e.target.value)}>
-                  {(regions.length > 0
-                    ? regions
-                    : [{ id: "national", label: "National" }]
-                  ).map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <label className="flex items-end gap-2 pb-2 text-xs text-slate-600">
+              <label className="flex items-start gap-2 border-t border-slate-200 pt-3 text-[11px] text-slate-600">
                 <input
                   type="checkbox"
                   checked={applyFairness}
                   onChange={(e) => setApplyFairness(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-brand-600"
+                  className="mt-0.5 h-3.5 w-3.5 accent-brand-600"
                 />
-                Apply fairness mitigation (Beta)
+                <span>
+                  Apply fairness mitigation{" "}
+                  <span className="text-slate-400">(Beta)</span>
+                </span>
               </label>
             </div>
 
@@ -319,7 +350,7 @@ export default function ApplicantPage() {
               {running ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Wand2 className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4" strokeWidth={1.5} />
               )}
               {running ? "Working through the application…" : "Get my estimated risk"}
             </Button>
@@ -343,9 +374,17 @@ export default function ApplicantPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               {!result && !running ? (
-                <div className="flex h-48 flex-col items-center justify-center text-center text-sm text-slate-500">
-                  <RefreshCw className="mb-3 h-6 w-6 text-slate-300" />
-                  Submit an application to see the estimate here.
+                <div className="flex h-52 flex-col items-center justify-center border border-dashed border-slate-300 bg-slate-100/30 px-6 text-center">
+                  <span className="flex h-11 w-11 items-center justify-center border border-slate-300 bg-paper">
+                    <ScanLine
+                      className="h-5 w-5 text-slate-400"
+                      strokeWidth={1.5}
+                    />
+                  </span>
+                  <p className="mt-4 max-w-[250px] text-xs leading-relaxed text-slate-500">
+                    Submit an application to see your estimated category, the
+                    reasons, and a recourse plan here.
+                  </p>
                 </div>
               ) : null}
 
@@ -448,7 +487,7 @@ export default function ApplicantPage() {
               <button
                 type="button"
                 onClick={() => setDetailOpen((v) => !v)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-1.5 rounded-sm border border-slate-300 bg-paper px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-600 transition hover:border-slate-900 hover:text-slate-900"
                 aria-expanded={detailOpen}
               >
                 {detailOpen ? "Hide" : "Show"}
@@ -477,28 +516,36 @@ export default function ApplicantPage() {
 
 function ContextStrip({ context }: { context: MacroContext }) {
   return (
-    <div className="grid grid-cols-2 gap-2 rounded-lg border border-slate-100 bg-slate-50 p-3 text-[11px] sm:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 border border-slate-200 bg-slate-100/40 p-3 text-[11px] sm:grid-cols-4">
       <div>
-        <p className="text-slate-500">Prime rate</p>
-        <p className="mono font-semibold text-slate-800">{context.prime_rate}%</p>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+          Prime rate
+        </p>
+        <p className="mono mt-1 font-medium text-slate-900">{context.prime_rate}%</p>
       </div>
       <div>
-        <p className="text-slate-500">Unemployment</p>
-        <p className="mono font-semibold text-slate-800">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+          Unemployment
+        </p>
+        <p className="mono mt-1 font-medium text-slate-900">
           {context.unemployment_rate}%
         </p>
       </div>
       <div>
-        <p className="text-slate-500">CPI (YoY)</p>
-        <p className="mono font-semibold text-slate-800">{context.cpi_yoy}%</p>
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+          CPI (YoY)
+        </p>
+        <p className="mono mt-1 font-medium text-slate-900">{context.cpi_yoy}%</p>
       </div>
       <div>
-        <p className="text-slate-500">Cycle tilt</p>
-        <p className="mono font-semibold text-slate-800">
+        <p className="text-[9px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+          Cycle tilt
+        </p>
+        <p className="mono mt-1 font-medium text-slate-900">
           {formatPct(context.cycle_tilt, 0)}
         </p>
       </div>
-      <p className="col-span-2 text-[10px] text-slate-400 sm:col-span-4">
+      <p className="col-span-2 border-t border-slate-200 pt-2 text-[9px] text-slate-400 sm:col-span-4">
         {context.region_label} · {context.note}
       </p>
     </div>
@@ -531,7 +578,14 @@ function NumberField({
   const [blank, setBlank] = useState(false);
   return (
     <div>
-      <Label>{label}</Label>
+      <Label>
+        {label}
+        {allowBlank ? (
+          <span className="ml-1 font-normal normal-case tracking-normal text-slate-400">
+            {" "}(optional)
+          </span>
+        ) : null}
+      </Label>
       <div className="relative">
         {prefix ? (
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">
@@ -557,9 +611,6 @@ function NumberField({
           }}
         />
       </div>
-      {allowBlank ? (
-        <p className="mt-1 text-[10px] text-slate-400">Leave blank if not reported.</p>
-      ) : null}
     </div>
   );
 }

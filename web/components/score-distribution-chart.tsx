@@ -31,24 +31,40 @@ export function ScoreDistributionChart({
         <BarChart data={data} margin={{ top: 8, right: 12, bottom: 8, left: 0 }}>
           <CartesianGrid
             strokeDasharray="3 3"
-            stroke={dark ? "#1e293b" : "#e2e8f0"}
+            stroke={dark ? "#362F25" : "#E2D6C0"}
             vertical={false}
           />
           <XAxis
             dataKey="bucket"
-            tick={{ fontSize: 10, fill: "#64748b" }}
+            tick={{ fontSize: 10, fill: dark ? "#A8977C" : "#857560" }}
             interval={3}
           />
-          <YAxis tick={{ fontSize: 11, fill: "#64748b" }} />
+          <YAxis tick={{ fontSize: 11, fill: dark ? "#A8977C" : "#857560" }} />
           <Tooltip
             contentStyle={
               dark
-                ? { background: "#020617", border: "1px solid #1e293b", borderRadius: 8, fontSize: 11 }
-                : undefined
+                ? {
+                    background: "#15110C",
+                    border: "1px solid #362F25",
+                    borderRadius: 3,
+                    fontSize: 11,
+                    color: "#F0E8D8",
+                  }
+                : {
+                    background: "#FCFAF3",
+                    border: "1px solid #E2D6C0",
+                    borderRadius: 3,
+                    fontSize: 11,
+                    color: "#241F18",
+                  }
             }
             formatter={(v: number) => [v, "applicants"]}
           />
-          <Bar dataKey="count" fill={dark ? "#22d3ee" : "#4f46e5"} radius={[3, 3, 0, 0]} />
+          <Bar
+            dataKey="count"
+            fill={dark ? "#CD9837" : "#A64420"}
+            radius={[1, 1, 0, 0]}
+          />
         </BarChart>
       </ResponsiveContainer>
     </div>

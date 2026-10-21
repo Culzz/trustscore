@@ -89,8 +89,15 @@ every screen.
   policy, influential features, fairness, and limitations, rendered live from
   `/model`.
 
-UI screenshots and a short demo GIF are the last portfolio step: capture them
-from the deployed URL once Vercel is connected.
+### Product screenshots
+
+The interface is a "paper ledger" design — warm paper background, editorial serif
+headings, square corners — with a single header switch between the light
+applicant experience and the dark auditor terminal:
+
+![Applicant view](docs/figures/ui-applicant.png)
+
+![Auditor console](docs/figures/ui-auditor.png)
 
 ---
 
@@ -98,7 +105,7 @@ from the deployed URL once Vercel is connected.
 
 The model and the *decision* are deliberately separate:
 
-1. **Retrieval-free scoring** — eleven applicant fields become a feature vector
+1. **Retrieval-free scoring** — ten applicant fields become a feature vector
    (a self-contained NumPy/pandas preprocessor; no scikit-learn at runtime).
 2. **Calibrated PD** — LightGBM → isotonic calibration curve → a probability
    you can read directly as a default rate.
