@@ -20,10 +20,15 @@ import type {
 } from "./types";
 
 // In development the API runs separately on :8000. In production (Vercel) the
-// Python function is served under /api on the same origin, so set
-// NEXT_PUBLIC_API_BASE_URL=/api there.
+// Python function is served under /api on the same origin, so the build-time
+// env var NEXT_PUBLIC_API_BASE_URL=/api normally wins. As a fallback we derive
+// the same-origin base for any non-localhost deployment so the UI keeps working
+// even when that variable was not present at build time.
 export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  (typeof window !== "undefined" && /^localhost|^127\.0\.0\.1/.test(window.location.hostname)
+    ? "http://localhost:8000"
+    : "/api");
 
 class ApiError extends Error {
   status: number;
