@@ -11,6 +11,27 @@ calibration, a fairness audit, a decision-policy simulator and a model card.
 > real lending tool**, not a loan offer and not financial advice. Every decision
 > is labelled *simulated*.
 
+**[Live demo](https://trustscore-sigma.vercel.app)** ·
+[Applicant view](https://trustscore-sigma.vercel.app/) ·
+[Auditor console](https://trustscore-sigma.vercel.app/auditor) ·
+[Model card](https://trustscore-sigma.vercel.app/model-card) ·
+[API reference](docs/API.md) ·
+[Report a bug](https://github.com/Culzz/trustscore/issues/new?template=bug_report.md)
+
+![CI](https://github.com/Culzz/trustscore/actions/workflows/ci.yml/badge.svg)
+![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
+
+## Screenshots
+
+The interface is a "paper ledger" design — warm paper background, editorial serif
+headings, square corners — with a single header switch between the light
+applicant experience and the dark auditor terminal. A *SIMULATION ENVIRONMENT*
+watermark and banner stay on every screen.
+
+![Applicant view — form, estimate, notice and what-if sandbox](docs/figures/ui-applicant.png)
+
+![Auditor console — policy simulation, fairness, drift and lineage](docs/figures/ui-auditor.png)
+
 ---
 
 ## Headline results
@@ -67,8 +88,7 @@ All figures are generated from the committed reports by `python scripts/figures.
 
 A single global toggle in the header swaps the whole platform between a light,
 plain-language **applicant** experience and a dark, high-density **auditor**
-terminal. A persistent *SIMULATION ENVIRONMENT* watermark and banner stay on
-every screen.
+terminal.
 
 * **Applicant view** (`/`) — application form (or one-click samples) and an
   **asynchronous** decision job whose milestones stream in live (validated →
@@ -89,17 +109,37 @@ every screen.
   policy, influential features, fairness, and limitations, rendered live from
   `/model`.
 
-### Product screenshots
-
-The interface is a "paper ledger" design — warm paper background, editorial serif
-headings, square corners — with a single header switch between the light
-applicant experience and the dark auditor terminal:
-
-![Applicant view](docs/figures/ui-applicant.png)
-
-![Auditor console](docs/figures/ui-auditor.png)
-
 ---
+
+## Architecture
+
+```
+                    browser
+   applicant (light) / auditor (dark)
+                        │  fetch + WebSocket, same origin
+                        ▼
+            Next.js 14  (web/)          React · TypeScript · Tailwind
+                        │  /api/*       serverless function on Vercel
+                        ▼
+            FastAPI  (api/)             scoring · explanation · policy · jobs
+              │           │
+              │           └──► job bus: in-process asyncio,
+              │                   or Celery + Redis (docker profile)
+              │                   · WS /ws/jobs/{id}, polling fallback
+              │
+              ├──► anonymised prediction log ──► Postgres / SQLite / none
+              │    (bin indices + category codes only)
+              └──► audit services: portfolio, policy simulator, A/B,
+                   bias injector, PSI/KS drift, ReportLab compliance PDF
+
+  committed artifacts: model.joblib / model_fair.joblib + registry.json
+                        ▲
+  offline (training/):  │  clean → train → calibrate → explain → audit
+  sklearn/shap live here only — never in the runtime image
+```
+
+The full component-by-component walkthrough is in
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
 ## How it works
 
@@ -130,8 +170,21 @@ trustscore/
   reports/    fairness, calibration, metrics, drift JSON + MODEL_CARD.md + EVALUATION.md
   docs/       architecture, API, deployment, evaluation protocol
   data/       raw data (git-ignored; never committed)
-  .github/    CI workflows
+  .github/    CI workflows + issue/PR templates
 ```
+
+## Tech stack
+
+| Layer | Technology | Role |
+| --- | --- | --- |
+| Model | LightGBM + isotonic calibration | Calibrated probability of default |
+| API | FastAPI, WebSockets, slowapi | Scoring, explanations, async jobs, governance endpoints |
+| Serve-time deps | NumPy, pandas, ReportLab | Feature vector + compliance PDF — deliberately **no** scikit-learn, SciPy, SHAP or matplotlib at runtime |
+| Frontend | Next.js 14 (App Router), TypeScript, Tailwind CSS, Recharts, Lucide, Fontsource | Dual-persona UI, charts, self-hosted fonts |
+| Storage | Postgres (Supabase/Aiven/Neon) · SQLite · `none` | Anonymised logging + job mirroring; zero-config by default |
+| Async | In-process asyncio; optional Celery + Redis | `/apply` milestones over WebSocket or polling |
+| Training | scikit-learn, SHAP, matplotlib, MLflow | Offline only: train, calibrate, audit, markdown reports |
+| Dev & CI | pytest, ESLint, `tsc`, Docker Compose, GitHub Actions | Reproducible checks on every push |
 
 ## Quickstart
 
@@ -162,6 +215,30 @@ The model artifact is committed, so the API runs immediately. Retrain with:
 pip install -r training/requirements.txt
 python -m training.src.train
 ```
+
+## Testing
+
+API suite (scoring, policy, fairness, privacy gateway, jobs — 40+ tests):
+
+```bash
+cd api
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+Web checks:
+
+```bash
+cd web
+npm run typecheck     # tsc --noEmit
+npm run lint          # eslint
+npm run build         # production build (NEXT_PUBLIC_API_BASE_URL=/api set in CI)
+```
+
+CI (`.github/workflows/ci.yml`) runs the pytest suite plus the web lint and
+production build on every push and pull request. A one-command local stack —
+including the real Celery/Redis worker path — is available via
+`docker compose up --build` (light) or `docker compose --profile async up --build`.
 
 ## API
 
@@ -293,6 +370,23 @@ The dataset has **no gender, race or geography**, so those are reported as *not
 available*, not estimated. These figures are statistical disparities, not a
 legal compliance verdict — the Model Card says so explicitly.
 
+## Security & privacy
+
+* A pure-ASGI **privacy gateway** strips direct identifiers from JSON request
+  bodies before any handler runs; only salted digests remain (request state
+  only, for counting) and the redaction count is echoed in `x-pii-redactions`.
+* Prediction and drift logging stores **bin indices and category codes only** —
+  never raw applicant values; `data/` is git-ignored and no personal data is
+  committed anywhere.
+* All configuration is environment-based (documented placeholder-by-placeholder
+  in [`.env.example`](.env.example)); **no secrets are committed** and `.env*` is
+  git-ignored. Change `PII_SALT` from its placeholder in any real deployment.
+* Rate limiting (`RATE_LIMIT`, slowapi) protects the scoring endpoints and CORS
+  is a closed allow-list (`CORS_ORIGINS`).
+* The platform makes **simulated** decisions only and transmits no personal data
+  anywhere. Vulnerabilities are handled privately per
+  [`SECURITY.md`](SECURITY.md).
+
 ## Deployment
 
 Full-stack on **Vercel** (Next.js + FastAPI serverless + any Postgres), or split
@@ -329,7 +423,7 @@ Step-by-step in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
   labelled as tuning-set figures.
 * **The macro feature store is an honest seeded mock.** Its context is displayed
   to applicants and can tilt a cut-off, but it is deliberately **not** an input to
-  the model, so scores stay reproducible from the eleven applicant fields alone.
+  the model, so scores stay reproducible from the ten applicant fields alone.
   The deviation is stated in the UI and in `docs/ARCHITECTURE.md`.
 * Monitoring is offline/simulated when no database is configured: with no live
   stream the drift panel runs a clearly-labelled synthetic window. Async job state
@@ -349,6 +443,32 @@ Step-by-step in [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 (public). Raw data is **never committed** (`data/` is git-ignored). No real
 personal data is used.
 
-## Licence / attribution
+## Roadmap
 
-Code: MIT-style demonstration project. Dataset: per its Kaggle licence.
+* **Durable job store on a free-tier database** — `DATABASE_URL` + `STORAGE_BACKEND=postgres`
+  against a no-card Postgres (Neon) so `/apply` survives serverless recycling
+  end-to-end; the Celery/Redis path already exists for long-lived deployments.
+* **Multi-attribute fairness constraints** — post-processing that must hold the
+  four-fifths floor on *every* audited attribute simultaneously, instead of one
+  attribute at a time.
+* **Champion/challenger rollout** — scheduling-based promotion of a new model
+  version through the registry, with the live drift panel as the promotion gate.
+* **Pricing and credit-limit simulation** alongside the approve/refer/decline
+  decision.
+* Label drift / outcome-shift monitoring on ground-truth outcomes as they accrue
+  (today the drift panel monitors covariate shift and an adversarial proxy).
+
+## Credits & contact
+
+* Built by **[Culzz](https://github.com/Culzz)**. Questions, feedback, ideas:
+  open an [issue](https://github.com/Culzz/trustscore/issues) — that reaches the
+  author fastest. See [`CONTRIBUTING.md`](CONTRIBUTING.md) before opening a PR.
+* Dataset: Kaggle [Credit Risk Dataset](https://www.kaggle.com/datasets/laotse/credit-risk-dataset)
+  by *laotse* (public, non-African — see [Limitations](#limitations)).
+* Standard library of choice: FastAPI, LightGBM, Next.js, Tailwind CSS,
+  Recharts, Celery (see [Tech stack](#tech-stack)).
+
+## Licence
+
+Code: MIT (see [`LICENSE`](LICENSE)). Dataset: per its Kaggle licence. As always
+above: this is a demonstration of a system, not a deployed financial product.
