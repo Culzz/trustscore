@@ -55,3 +55,8 @@ This rewrites `api/artifacts/*` and the `reports/*.json` files, plus
 fit / tune / report partition; the validation slice is what ships as the audit
 *policy tuning set* (`api/artifacts/portfolio.json`) and the test slice is never
 shipped. See [`docs/EVALUATION.md`](../docs/EVALUATION.md).
+
+> Licence note. The dataset is distributed under its own Kaggle licence and is
+> **not** included in this repository. TrustScore's code is MIT (see the root
+> [`LICENSE`](../LICENSE)); this project is a demonstration and is not a real
+> lending tool.
