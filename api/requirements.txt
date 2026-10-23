@@ -15,4 +15,4 @@ psycopg2-binary>=2.9,<3
 slowapi==0.1.9
 # Server-side PDF generation for the compliance report. ReportLab draws its own
 # charts, so matplotlib stays out of the runtime.
-reportlab>=4.0,<6
+reportlab>=5.0.1,<6
