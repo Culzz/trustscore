@@ -3,7 +3,7 @@
 #
 # NumPy must be >= 2.0: the model artifact is pickled in the training
 # environment (NumPy 2.x) and NumPy 1.x cannot unpickle NumPy 2 arrays.
-fastapi==0.115.0
+fastapi==0.150.0
 uvicorn==0.30.6
 pydantic==2.9.2
 pydantic-settings==2.5.2
