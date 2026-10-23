@@ -4,7 +4,7 @@
 # NumPy must be >= 2.0 so the exported artifact is reliably loadable by the
 # pinned API runtime (see api/requirements.txt).
 numpy>=2.0,<3
-pandas>=2.2,<3
+pandas>=3.0.6,<4
 scikit-learn>=1.5,<2
 lightgbm>=4.5,<5
 shap>=0.46
