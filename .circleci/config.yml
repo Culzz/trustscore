@@ -1,0 +1,55 @@
+version: 2.1
+
+# Automated checks, replacing GitHub Actions (blocked by that account's usage
+# limit) and Cirrus CI (shut down). CircleCI's Free plan grants the open-source
+# allowance for public repositories, no card required.
+#
+# One-time setup: sign in at https://circleci.com with GitHub, then Projects >
+# trustscore > "Set Up Project". This config picks up automatically.
+workflows:
+  checks:
+    jobs:
+      - api-tests
+      - web-build
+
+jobs:
+  api-tests:
+    docker:
+      - image: cimg/python:3.11
+    environment:
+      STORAGE_BACKEND: none
+      LOG_PREDICTIONS: "false"
+    steps:
+      - checkout
+      - run:
+          name: Install API dependencies
+          command: pip install -r api/requirements-dev.txt
+      - run:
+          name: Pytest suite
+          working_directory: api
+          command: pytest
+
+  web-build:
+    docker:
+      - image: cimg/node:20
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - npm-v1-{{ checksum "web/package-lock.json" }}
+      - run:
+          name: Install web dependencies
+          working_directory: web
+          command: npm ci --no-audit --no-fund
+      - save_cache:
+          key: npm-v1-{{ checksum "web/package-lock.json" }}
+          paths:
+            - web/node_modules
+      - run:
+          name: Lint
+          working_directory: web
+          command: npm run lint
+      - run:
+          name: Production build
+          working_directory: web
+          command: NEXT_PUBLIC_API_BASE_URL=/api npm run build
