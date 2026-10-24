@@ -18,7 +18,7 @@ calibration, a fairness audit, a decision-policy simulator and a model card.
 [API reference](docs/API.md) ·
 [Report a bug](https://github.com/Culzz/trustscore/issues/new?template=bug_report.md)
 
-![CI](https://github.com/Culzz/trustscore/actions/workflows/ci.yml/badge.svg)
+![Cirrus CI](https://api.cirrus-ci.com/github/Culzz/trustscore.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## Screenshots
@@ -235,10 +235,14 @@ npm run lint          # eslint
 npm run build         # production build (NEXT_PUBLIC_API_BASE_URL=/api set in CI)
 ```
 
-CI (`.github/workflows/ci.yml`) runs the pytest suite plus the web lint and
-production build on every push and pull request. A one-command local stack —
-including the real Celery/Redis worker path — is available via
-`docker compose up --build` (light) or `docker compose --profile async up --build`.
+**Cirrus CI** (`.cirrus.yml`, free for public repos) runs the pytest suite plus
+the web lint and production build on every push — sign in with GitHub at
+[cirrus-ci.com](https://cirrus-ci.com) and enable the repository to activate it.
+Additionally, **Vercel** independently builds and lints the web app on every
+push, since that is the deployment pipeline (failures block the deploy). A
+one-command local stack — including the real Celery/Redis worker path — is
+available via `docker compose up --build` (light) or
+`docker compose --profile async up --build`.
 
 ## API
 

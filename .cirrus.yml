@@ -1,0 +1,32 @@
+# Cirrus CI — free for public repositories.
+#
+# One-time setup: sign in with GitHub at https://cirrus-ci.com and switch this
+# repository on. Every push then runs the same checks as the CI description in
+# the README: the API pytest suite and the Next.js lint + production build.
+env:
+  CIRRUS_CLONE_DEPTH: 1
+
+api_tests_task:
+  name: API tests (pytest)
+  container:
+    image: python:3.11
+  env:
+    STORAGE_BACKEND: none
+    LOG_PREDICTIONS: "false"
+  install_script: pip install -r api/requirements-dev.txt
+  test_script:
+    - cd api
+    - pytest
+
+web_build_task:
+  name: Web build (Next.js)
+  container:
+    image: node:20
+  node_modules_cache:
+    folder: web/node_modules
+    fingerprint_script: cat web/package-lock.json
+    populate_script: (cd web && npm ci --no-audit --no-fund)
+  build_script:
+    - cd web
+    - npm run lint
+    - NEXT_PUBLIC_API_BASE_URL=/api npm run build
